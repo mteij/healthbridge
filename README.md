@@ -120,11 +120,14 @@ Follow these steps to set up Firebase:
 1. **Prerequisites**\
     Ensure that you have Docker and Docker Compose installed on your system.
 
-2. **Setting up Environment Variables**
+2. **Setting up the Environment**
 
    - You’ll need to configure environment variables before starting the services.
    - Copy the provided `.env.example` file to `.env` inside the `api/` directory and configure it as necessary. When setting the `MONGO_URI` variable, the following format should be used: `mongodb://<username>:<password>@db:27017/hcgateway?authSource=admin`
    - Set the mongo DB username and password in the `docker-compose.yml` file as well.
+
+    - Visit the firebase console > project settings > Service accounts and click generate new private key
+    - Save the file as `service-account.json` in the `api/` folder
 
 3. **Running the Containers with Docker Compose**\
     The project uses Docker Compose for easier container orchestration. To run the API using Docker Compose, run the following command:
