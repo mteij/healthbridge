@@ -91,6 +91,7 @@ let login;
 let apiBase = 'https://api.hcgateway.shuchir.dev';
 let lastSync = null;
 let taskDelay = 7200 * 1000; // 2 hours
+let fullSyncMode = true; // Default to full 30-day sync
 
 Toast.show({
   type: 'info',
@@ -130,6 +131,12 @@ get('lastSync')
   }
 })
 
+get('fullSyncMode')
+.then(res => {
+  if (res !== null) {
+    fullSyncMode = res === 'true';
+  }
+})
 
 const askForPermissions = async () => {
   const isInitialized = await initialize();
@@ -264,8 +271,22 @@ const sync = async () => {
     type: 'info',
     text1: "Syncing data...",
   })
-  await setPlain('lastSync', new Date().toISOString());
-  lastSync = new Date().toISOString();
+  
+  const currentTime = new Date().toISOString();
+  
+  let startTime;
+  if (fullSyncMode) 
+    startTime = String(new Date(new Date().setDate(new Date().getDate() - 29)).toISOString());
+  
+  else {
+    if (lastSync) 
+      startTime = lastSync;
+    else 
+      startTime = String(new Date(new Date().setDate(new Date().getDate() - 29)).toISOString());
+  }
+  
+  await setPlain('lastSync', currentTime);
+  lastSync = currentTime;
 
   let recordTypes = ["ActiveCaloriesBurned", "BasalBodyTemperature", "BloodGlucose", "BloodPressure", "BasalMetabolicRate", "BodyFat", "BodyTemperature", "BoneMass", "CyclingPedalingCadence", "CervicalMucus", "ExerciseSession", "Distance", "ElevationGained", "FloorsClimbed", "HeartRate", "Height", "Hydration", "LeanBodyMass", "MenstruationFlow", "MenstruationPeriod", "Nutrition", "OvulationTest", "OxygenSaturation", "Power", "RespiratoryRate", "RestingHeartRate", "SleepSession", "Speed", "Steps", "StepsCadence", "TotalCaloriesBurned", "Vo2Max", "Weight", "WheelchairPushes"]; 
   
@@ -276,7 +297,7 @@ const sync = async () => {
         {
           timeRangeFilter: {
             operator: "between",
-            startTime: String(new Date(new Date().setDate(new Date().getDate() - 29)).toISOString()),
+            startTime: startTime,
             endTime: String(new Date().toISOString())
           }
         }
@@ -420,9 +441,10 @@ const handleDel = async (message) => {
 }
   
 
-export default function App() {
+export default Sentry.wrap(function App() {
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
   const [form, setForm] = React.useState(null);
+  const [showSyncWarning, setShowSyncWarning] = React.useState(false);
 
   const loginFunc = async () => {
     Toast.show({
@@ -516,6 +538,7 @@ export default function App() {
         <View>
           <Text style={{ fontSize: 20, marginVertical: 10 }}>You are currently logged in.</Text>
           <Text style={{ fontSize: 17, marginVertical: 10 }}>Last Sync: {lastSync}</Text>
+          <Button title='Try!' onPress={ () => { Sentry.captureException(new Error('First error')) }}/>
 
           <Text style={{ marginTop: 10, fontSize: 15 }}>API Base URL:</Text>
           <TextInput
@@ -554,7 +577,8 @@ export default function App() {
               onValueChange={async (value) => {
               if (value) {
                 Sentry.init({
-                dsn: 'https://e4a201b96ea602d28e90b5e4bbe67aa6@sentry.shuchir.dev/6',
+                dsn: 'https://0e831d625e3149f83c56fc44d13003b7@o4508755575701504.ingest.de.sentry.io/4509136718004304',
+                tracesSampleRate: 1.0,
                 });
                 Toast.show({
                 type: 'success',
@@ -575,6 +599,58 @@ export default function App() {
               }}
             />
             </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 10 }}>
+            <Text style={{ fontSize: 15 }}>Full 30-day sync:</Text>
+            <Switch
+              value={fullSyncMode}
+              onValueChange={async (value) => {
+                if (!value) {
+                  setShowSyncWarning(true);
+                } else {
+                  fullSyncMode = value;
+                  await setPlain('fullSyncMode', value.toString());
+                  Toast.show({
+                    type: 'info',
+                    text1: "Sync mode updated",
+                    text2: "Will sync full 30 days of data"
+                  });
+                  forceUpdate();
+                }
+              }}
+            />
+          </View>
+          
+          {showSyncWarning && (
+            <View style={styles.warningContainer}>
+              <Text style={styles.warningText}>
+                Warning: Incremental sync only syncs data since the last sync. 
+                You may miss data if the app stops abruptly.
+              </Text>
+              <View style={styles.warningButtons}>
+                <Button
+                  title="Cancel"
+                  onPress={() => {
+                    setShowSyncWarning(false);
+                  }}
+                />
+                <Button
+                  title="Continue"
+                  onPress={async () => {
+                    fullSyncMode = false;
+                    await setPlain('fullSyncMode', 'false');
+                    setShowSyncWarning(false);
+                    Toast.show({
+                      type: 'info',
+                      text1: "Sync mode updated",
+                      text2: "Will only sync data since last sync"
+                    });
+                    forceUpdate();
+                  }}
+                />
+              </View>
+            </View>
+          )}
 
           <View style={{ marginTop: 20 }}>
             <Button
@@ -677,7 +753,7 @@ export default function App() {
     <Toast />
     </View>
   );
-};
+});;
 
 const styles = StyleSheet.create({
   container: {
@@ -699,5 +775,23 @@ const styles = StyleSheet.create({
     width: 350,
     fontSize: 17
   },
-
+  
+  warningContainer: {
+    backgroundColor: '#fff3cd',
+    borderColor: '#ffeeba',
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 10,
+    marginVertical: 10,
+  },
+  
+  warningText: {
+    color: '#856404',
+    marginBottom: 10,
+  },
+  
+  warningButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
 });
