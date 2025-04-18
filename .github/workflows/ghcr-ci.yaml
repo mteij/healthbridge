@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build and push the image
         run : |
-          docker login --username CoolCoderSJ --password ${{ secrets.GH_PAT }} ghcr.io
-          docker build -t ghcr.io/coolcodersj/hcgateway:latest -t ghcr.io/coolcodersj/hcgateway:${{ steps.get_release.outputs.latest_tag }}-${{ github.sha }} -f ./api/Dockerfile ./api
-          docker push ghcr.io/coolcodersj/hcgateway:latest
-          docker push ghcr.io/coolcodersj/hcgateway:${{ steps.get_release.outputs.latest_tag }}-${{ github.sha }}
+          docker login --username ShuchirJ --password ${{ secrets.GH_PAT }} ghcr.io
+          docker build -t ghcr.io/shuchirj/hcgateway:latest -t ghcr.io/shuchirj/hcgateway:${{ steps.get_release.outputs.latest_tag }}-${{ github.sha }} -f ./api/Dockerfile ./api
+          docker push ghcr.io/shuchirj/hcgateway:latest
+          docker push ghcr.io/shuchirj/hcgateway:${{ steps.get_release.outputs.latest_tag }}-${{ github.sha }}

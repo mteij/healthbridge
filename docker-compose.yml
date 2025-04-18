@@ -1,7 +1,7 @@
 
 services:
   api:
-    image: ghcr.io/coolcodersj/hcgateway:latest
+    image: ghcr.io/shuchirj/hcgateway:latest
     ports:
       - "6644:6644"
     env_file:
