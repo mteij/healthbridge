@@ -538,7 +538,6 @@ export default Sentry.wrap(function App() {
         <View>
           <Text style={{ fontSize: 20, marginVertical: 10 }}>You are currently logged in.</Text>
           <Text style={{ fontSize: 17, marginVertical: 10 }}>Last Sync: {lastSync}</Text>
-          <Button title='Try!' onPress={ () => { Sentry.captureException(new Error('First error')) }}/>
 
           <Text style={{ marginTop: 10, fontSize: 15 }}>API Base URL:</Text>
           <TextInput
