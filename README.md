@@ -58,6 +58,8 @@ The platform allows two-way sync, which means you can make changes to your local
 
 ## Get Started
 - There is a live instance hosted at https://api.hcgateway.shuchir.dev/ that you can use. You can also host your own instance. To learn more on Self Hosting, skip down to the Self Hosting section.
+> [!IMPORTANT]
+> **Use the hosted instance at your own risk. By using the hosted server, you acknowledge all responsibility is waived from the server owner.**
 - You can install the mobile application through the APK file. You can find the latest APK file in the releases section of this repository.
 - The minimum requirement for the APK file is Android Oreo (8.0)
 - Once you install the Android APK file, signup by entering a username and password
