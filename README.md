@@ -1,6 +1,11 @@
 # HCGateway
 HCGateway is a platform to let developers connect to the Health Connect API on Android via a REST API. You can view the documentation for the REST API [here](https://hcgateway.shuchir.dev/)
 
+<a href="https://www.buymeacoffee.com/shuchir" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a> 
+> [!NOTE]
+> Currently working on a more exciting project to run a lighter version of the server in the app itself, cutting down the setup process. Stay tuned!
+
+# How it works
 The platform consists of two parts:
 - A REST API/server
 - A mobile application that pings the server periodically
