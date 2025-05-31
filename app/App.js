@@ -574,21 +574,22 @@ export default Sentry.wrap(function App() {
             }}
           />
 
-          <Text style={{ marginTop: 10, fontSize: 15 }}>Sync Interval (in seconds) (defualt is 2 hours):</Text>
+          <Text style={{ marginTop: 10, fontSize: 15 }}>Sync Interval (in hours):</Text>
           <TextInput
             style={styles.input}
             placeholder="Sync Interval"
             keyboardType='numeric'
-            defaultValue={(taskDelay / 1000).toString()}
+            defaultValue={(taskDelay / (1000 * 60 * 60)).toString()}
             onChangeText={text => {
-              taskDelay = Number(text) * 1000;
-              setPlain('taskDelay', String(text * 1000));
+              const hours = Number(text);
+              taskDelay = hours * 60 * 60 * 1000; 
+              setPlain('taskDelay', String(taskDelay));
               ReactNativeForegroundService.update_task(() => sync(), {
                 delay: taskDelay,
               })
               Toast.show({
                 type: 'success',
-                text1: "Sync interval updated",
+                text1: `Sync interval updated to ${hours} ${hours === 1 ? 'hour' : 'hours'}`,
               })
             }}
           />
