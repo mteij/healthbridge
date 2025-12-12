@@ -2,8 +2,6 @@
 HCGateway is a platform to let developers connect to the Health Connect API on Android via a REST API. You can view the documentation for the REST API [here](https://hcgateway.shuchir.dev/)
 
 <a href="https://www.buymeacoffee.com/shuchir" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a> 
-> [!NOTE]
-> Currently working on a more exciting project to run a lighter version of the server in the app itself, cutting down the setup process. Stay tuned!
 
 # How it works
 The platform consists of two parts:
@@ -171,3 +169,4 @@ npx @sentry/wizard -i reactNative -p android --uninstall
 - run `npx patch-package` to apply a patch to the foreground service library
 - run `npm run android` to start the application, or `cd android && ./gradlew assembleRelease` to build the APK file
     - It is also possible to now use eas build to build the APK file. You can find more at https://docs.expo.dev/build/eas-build/ **NOTE: This must be a local build, since you need to run patch-package before building the APK file.**
+
