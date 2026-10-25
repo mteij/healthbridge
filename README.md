@@ -66,7 +66,7 @@ Under `/api/v2`, session or API key (keys: read endpoints only).
 | `POST/GET/DELETE /apikeys` | Manage keys |
 | `GET /healthz` `/status` | Health, public status |
 
-Types are lowerCamelCase Health Connect names (`steps`, `heartRate`, `exerciseSession`, `vo2Max`, …).
+Health numbers and their sources: [docs/HEALTH.md](docs/HEALTH.md). Types are lowerCamelCase Health Connect names (`steps`, `heartRate`, `exerciseSession`, `vo2Max`, …).
 
 ## Development
 
