@@ -14,21 +14,26 @@ log = logging.getLogger("healthbridge.workouts")
 SERIES_TYPES = ["heartRate", "speed", "distance", "activeCaloriesBurned",
                 "totalCaloriesBurned", "steps", "elevationGained"]
 DEFAULT_LIMIT, MAX_LIMIT = 20, 200
-# records may be reported in chunks that begin before / end after the workout
-MARGIN_MS = 3 * 3600 * 1000
+# a record can begin well before the workout and still overlap it (an hour of steps, a long
+# heart-rate record); the range query below only uses this to bound the index scan
+MARGIN_MS = 24 * 3600 * 1000
 
 
 def series_for(userid, session, cipher):
+    """Records overlapping the session, per type. Overlap is decided in MongoDB, so only the
+    records that matter are decrypted."""
     from datetime import timedelta
     start, end = parse_iso(session["start"]), parse_iso(session["end"])
     lo = to_iso(start - timedelta(milliseconds=MARGIN_MS))
     hi = to_iso(end)
     series = {}
     for record_type in SERIES_TYPES:
-        # anything that begins before the workout ends and was not finished before it began
-        cursor = db.records(userid, record_type).find({"start": {"$gte": lo, "$lte": hi}})
-        docs = decrypt_docs(cursor, cipher)
-        series[record_type] = [d for d in docs if (d["end"] or d["start"]) >= session["start"]]
+        cursor = db.records(userid, record_type).find({
+            "start": {"$gte": lo, "$lte": hi},
+            "$or": [{"end": {"$gte": session["start"]}},
+                    {"end": None, "start": {"$gte": session["start"]}}],
+        })
+        series[record_type] = decrypt_docs(cursor, cipher)
     return series
 
 

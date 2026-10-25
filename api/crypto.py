@@ -1,6 +1,8 @@
 import base64
 import hashlib
+import json
 import os
+import zlib
 
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
@@ -34,3 +36,23 @@ def data_cipher(user):
 
 
 __all__ = ["data_cipher", "InvalidToken"]
+
+
+COMPRESS_MIN_BYTES = 1024
+
+
+def encode_payload(cipher, payload):
+    """JSON -> (token, compressed). Large payloads (heart rate and speed samples) are deflated
+    before encryption, which shrinks them roughly 5x; small ones are not worth the cost."""
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+    compressed = len(raw) >= COMPRESS_MIN_BYTES
+    if compressed:
+        raw = zlib.compress(raw, 6)
+    return cipher.encrypt(raw).decode(), compressed
+
+
+def decode_payload(cipher, doc):
+    raw = cipher.decrypt(doc["data"].encode())
+    if doc.get("z"):
+        raw = zlib.decompress(raw)
+    return json.loads(raw)

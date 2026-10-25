@@ -8,7 +8,7 @@ from pymongo import ReplaceOne
 
 import db
 from blueprint import v2
-from crypto import InvalidToken, data_cipher
+from crypto import InvalidToken, data_cipher, decode_payload, encode_payload
 from timeutil import canonical
 
 log = logging.getLogger("healthbridge.records")
@@ -16,6 +16,7 @@ log = logging.getLogger("healthbridge.records")
 RECORD_TYPE = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,39}$")  # digits: vo2Max
 FORBIDDEN_OPERATORS = {"$where", "$function", "$accumulator", "$expr"}
 MAX_FETCH = 20000
+DEFAULT_FETCH = 5000
 
 
 def normalize_type(method):
@@ -58,12 +59,11 @@ def sync(method):
         except (KeyError, TypeError, ValueError, AttributeError):
             return jsonify({"error": "invalid record", "index": index}), 400
         payload = {k: v for k, v in item.items() if k not in ("metadata", "time", "startTime", "endTime")}
-        encrypted = cipher.encrypt(json.dumps(payload).encode()).decode()
-        ops.append(ReplaceOne(
-            {"_id": item_id},
-            {"_id": item_id, "id": item_id, "data": encrypted, "app": origin, "start": start, "end": end},
-            upsert=True,
-        ))
+        encrypted, compressed = encode_payload(cipher, payload)
+        doc = {"_id": item_id, "data": encrypted, "app": origin, "start": start, "end": end}
+        if compressed:
+            doc["z"] = True
+        ops.append(ReplaceOne({"_id": item_id}, doc, upsert=True))
 
     if ops:
         db.records(g.user, record_type).bulk_write(ops, ordered=False)
@@ -75,16 +75,24 @@ def decrypt_docs(cursor, cipher):
     docs = []
     for doc in cursor:
         try:
-            doc["data"] = json.loads(cipher.decrypt(doc["data"].encode()).decode())
-        except InvalidToken:
+            doc["data"] = decode_payload(cipher, doc)
+        except (InvalidToken, ValueError):
             log.warning("could not decrypt record %s", doc.get("_id"))
             continue
+        doc.pop("z", None)
+        doc.setdefault("id", doc["_id"])
         docs.append(doc)
     return docs
 
 
 @v2.post("/fetch/<method>")
 def fetch(method):
+    """Raw records, oldest first.
+
+    Body (all optional): `queries` (Mongo filter), `from` / `to` (ISO times, applied to `start`),
+    `limit` (default 5000, max 20000) and `cursor`. When more records exist the response carries
+    an `X-Next-Cursor` header; send it back as `cursor` to continue.
+    """
     record_type = normalize_type(method)
     if not record_type:
         return jsonify({"error": "invalid record type"}), 400
@@ -93,13 +101,29 @@ def fetch(method):
     if not isinstance(queries, dict) or _has_forbidden(queries):
         return jsonify({"error": "invalid query"}), 400
     try:
-        limit = min(int(body.get("limit", MAX_FETCH)), MAX_FETCH)
+        limit = max(1, min(int(body.get("limit", DEFAULT_FETCH)), MAX_FETCH))
+        clauses = [queries] if queries else []
+        if body.get("from"):
+            clauses.append({"start": {"$gte": canonical(body["from"])}})
+        if body.get("to"):
+            clauses.append({"start": {"$lte": canonical(body["to"])}})
+        if body.get("cursor"):
+            after_start, _, after_id = str(body["cursor"]).partition("|")
+            clauses.append({"$or": [{"start": {"$gt": after_start}},
+                                    {"start": after_start, "_id": {"$gt": after_id}}]})
     except (TypeError, ValueError):
-        return jsonify({"error": "invalid limit"}), 400
+        return jsonify({"error": "invalid limit, from, to or cursor"}), 400
 
     user = db.users().find_one({"_id": g.user})
-    cursor = db.records(g.user, record_type).find(queries).sort("start", 1).limit(limit)
-    return jsonify(decrypt_docs(cursor, data_cipher(user))), 200
+    query = {"$and": clauses} if clauses else {}
+    rows = list(db.records(g.user, record_type).find(query).sort([("start", 1), ("_id", 1)]).limit(limit + 1))
+    more = len(rows) > limit
+    docs = decrypt_docs(rows[:limit], data_cipher(user))
+    response = jsonify(docs)
+    if more:
+        last = rows[limit - 1]
+        response.headers["X-Next-Cursor"] = f"{last['start']}|{last['_id']}"
+    return response, 200
 
 
 @v2.delete("/sync/<method>")

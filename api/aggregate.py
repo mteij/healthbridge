@@ -143,7 +143,7 @@ def build_workout(session, series, include_samples=False):
         avg_speed = distance / duration
 
     workout = {
-        "id": session["id"],
+        "id": session.get("id") or session["_id"],
         "type": kind,
         "title": data.get("title") or None,
         "notes": data.get("notes") or None,
