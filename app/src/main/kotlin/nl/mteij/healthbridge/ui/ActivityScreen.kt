@@ -28,7 +28,7 @@ fun ActivityScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val entries by Graph.log.entries.collectAsState()
     LazyColumn(
         modifier.statusBarsPadding(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, bottom = 24.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         item {

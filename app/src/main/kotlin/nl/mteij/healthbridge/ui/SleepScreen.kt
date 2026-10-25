@@ -35,7 +35,7 @@ fun SleepScreen(vm: AppViewModel, onBack: () -> Unit, modifier: Modifier = Modif
     val nights = state.value.orEmpty().sortedBy { it.date }
     val last = nights.lastOrNull()
 
-    LazyColumn(modifier, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    LazyColumn(modifier, contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Row(Modifier.statusBarsPadding().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
