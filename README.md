@@ -57,22 +57,25 @@ Starts the server on port `6644` and a MongoDB that is not reachable from outsid
 <details>
 <summary><b>Configuration</b></summary>
 
-Environment variables of the `api` service:
+Copy [`.env.example`](.env.example) to `.env` next to `docker-compose.yml` (clone the repo, or download both files) and edit what you need:
+
+```sh
+cp .env.example .env && docker compose up -d
+```
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `MONGO_URI` | MongoDB connection string | set by the compose file |
-| `HB_DATA_KEY` | Secret that encrypts stored records. Set it before the first sync | unset (weak legacy key) |
+| `HB_DATA_KEY` | Secret that encrypts stored records. Set it **before** the first sync (`openssl rand -base64 48`) | empty (weak legacy key) |
 | `HB_ALLOW_REGISTRATION` | `true` to let more people create accounts | closed after the first account |
-| `HB_MAX_USERS` | Cap on accounts when registration is open | unlimited |
-| `HB_STALE_DAYS` | Delete accounts, and all their data, that were inactive for this many days (any sync, login or API key use counts as activity). `0` or unset disables it | disabled |
+| `HB_MAX_USERS` | Cap on accounts while registration is open | unlimited |
+| `HB_STALE_DAYS` | Delete accounts, and all their data, inactive for this many days. Any sync, login or API key use counts as activity | disabled |
 | `HB_STALE_EXEMPT` | Comma separated usernames that are never deleted | none |
 | `HB_STALE_DRY_RUN` | `true` to only log what would be deleted | `false` |
-| `HB_TIMEZONE` | Timezone for daily totals and sleep dates in MCP tools | `Europe/Amsterdam` |
+| `HB_TIMEZONE` | Timezone for daily totals and sleep dates in the MCP tools | `Europe/Amsterdam` |
 | `HB_LOG_LEVEL` | Log level | `INFO` |
-| `FCM_PROJECT_ID` | Only for the optional push/delete-to-device endpoints (needs a Firebase `service-account.json`) | unset |
+| `FCM_PROJECT_ID` | Only for the optional push/delete-to-device endpoints (needs a Firebase `service-account.json`) | empty |
 
-Back up the `db` volume. Existing data from the old encryption can be converted with `scripts/reencrypt.py` after you set `HB_DATA_KEY`.
+Back up the `db` volume. Data written with the old encryption can be converted with `scripts/reencrypt.py` after you set `HB_DATA_KEY`.
 </details>
 
 ## Use your data
@@ -121,7 +124,7 @@ Under `/api/v2`. Authenticate with the app's login session or an API key (keys a
 | `GET /workouts/<id>` | One workout with sample series |
 | `POST` · `GET` · `DELETE /apikeys` | Manage read-only keys |
 | `PUT /push/<type>` · `DELETE /delete/<type>` | Ask the phone to write or delete records (needs FCM) |
-| `GET /healthz` | Health check, no auth |
+| `GET /healthz` · `GET /status` | Health check and public status (version, open sign-ups, spots left), no auth |
 
 Record types are lowerCamelCase Health Connect names: `steps`, `heartRate`, `exerciseSession`, `sleepSession`, `vo2Max`, …
 Upstream HCGateway's v2 routes stay compatible.
@@ -135,7 +138,7 @@ api/run-tests.sh                       # server tests against a throwaway MongoD
 docker build -t healthbridge-api api   # server image
 ```
 
-`api/` Flask + gunicorn server · `app/` Kotlin + Compose app (Health Connect `connect-client` 1.1) · `scripts/` maintenance · `docs/` assets.
+`api/` Flask + gunicorn server · `.env.example` all settings · `app/` Kotlin + Compose app (Health Connect `connect-client` 1.1) · `scripts/` maintenance · `docs/` assets.
 
 CI builds and signs the APK and attaches it to every `v*` release (`.github/workflows/android.yml`) and publishes
 `ghcr.io/mteij/healthbridge` (`docker.yml`). To sign with your own key set the secrets `HB_KEYSTORE_B64`, `HB_KEYSTORE_PASSWORD`, `HB_KEY_ALIAS`.

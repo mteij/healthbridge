@@ -13,9 +13,15 @@ services:
       - "6644:6644"
     environment:
       MONGO_URI: mongodb://db:27017/hcgateway
+      # all optional, see .env.example (a `.env` next to this file is picked up automatically)
+      HB_DATA_KEY: ${HB_DATA_KEY:-}
+      HB_ALLOW_REGISTRATION: ${HB_ALLOW_REGISTRATION:-false}
+      HB_MAX_USERS: ${HB_MAX_USERS:-}
+      HB_STALE_DAYS: ${HB_STALE_DAYS:-}
+      HB_STALE_EXEMPT: ${HB_STALE_EXEMPT:-}
+      HB_STALE_DRY_RUN: ${HB_STALE_DRY_RUN:-false}
       HB_TIMEZONE: ${HB_TIMEZONE:-Europe/Amsterdam}
-      # HB_DATA_KEY: a long random string to encrypt stored records (set it before the first sync)
-      # HB_ALLOW_REGISTRATION: "true"    # only if you want more than one account
+      HB_LOG_LEVEL: ${HB_LOG_LEVEL:-INFO}
     depends_on:
       - db
 
