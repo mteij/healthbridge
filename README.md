@@ -41,7 +41,7 @@ syncs them off your phone reliably and puts them back together:
 
 **https://healthbridge.mteij.nl** is a free instance run by the maintainer. **Best effort: no uptime, retention or support promises.**
 
-- 🎟️ **Sign-ups are only open to the first 20 users.** When the spots are gone, [self-host](#self-host).
+- 🎟️ **Sign-ups are only open to the first 500 users.** When the spots are gone, [self-host](#self-host).
 - 🧹 **Accounts that have been inactive for 30 days are deleted**, together with all their data.
 - 🔒 Your records are stored on the maintainer's server and could technically be read by them, so for anything sensitive, self-host.
 
