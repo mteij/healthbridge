@@ -43,3 +43,12 @@ def test_delete_from_db(client, session):
     sync(client, t, "steps", [{"metadata": {"id": "a"}, "time": "2026-01-01T00:00:00Z", "count": 1}])
     res = client.delete("/api/v2/sync/steps", json={"uuid": "a"}, headers=auth(t))
     assert res.get_json()["deleted"] == 1
+
+
+def test_record_types_with_digits_are_accepted(client, session):
+    t = session["token"]
+    rec = {"metadata": {"id": "v"}, "time": "2026-10-20T10:00:00Z", "vo2MillilitersPerMinuteKilogram": 48.5}
+    assert sync(client, t, "vo2Max", [rec]).status_code == 200
+    assert sync(client, t, "Vo2Max", [rec]).status_code == 200  # old app capitalised it
+    docs = client.post("/api/v2/fetch/vo2Max", json={}, headers=auth(t)).get_json()
+    assert len(docs) == 1 and docs[0]["data"]["vo2MillilitersPerMinuteKilogram"] == 48.5

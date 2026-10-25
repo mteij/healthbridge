@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Healthbridge</title>
+<style>
+  :root { --bg:#f7fafb; --fg:#10222c; --muted:#5b6f7a; --card:#fff; --line:#dbe5ea; --accent:#0b6e8a; --code:#eef4f6; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#041824; --fg:#e6f1f5; --muted:#8aa3af; --card:#0a2433; --line:#17394b; --accent:#4fd1c5; --code:#0d2c3e; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 20px 64px; }
+  h1 { font-size: 2rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 32px 0 8px; }
+  p { margin: 8px 0; }
+  .tag { color: var(--muted); margin: 0 0 24px; }
+  .status { display:inline-flex; align-items:center; gap:8px; padding:4px 12px; border:1px solid var(--line); border-radius:999px; background:var(--card); font-size:.9rem; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#2da44e; }
+  .dot.bad { background:#d1242f; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:4px 18px 14px; margin-top:16px; }
+  pre { background:var(--code); padding:12px; border-radius:8px; overflow-x:auto; font-size:.85rem; margin:8px 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.9em; }
+  a { color: var(--accent); }
+  footer { margin-top:40px; color:var(--muted); font-size:.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Healthbridge</h1>
+  <p class="tag">Your Health Connect data, on your own server.</p>
+  <span class="status"><span id="dot" class="dot"></span><span id="state">checking…</span></span>
+
+  <p>This is a private API server. There is nothing to see here without the Android app or an API key.</p>
+
+  <div class="card">
+    <h2>1. Install the app</h2>
+    <p>Download the latest APK from <a href="https://github.com/mteij/healthbridge/releases/latest">GitHub releases</a>,
+       or add it to <a href="obtainium://add/https://github.com/mteij/healthbridge">Obtainium</a> to get updates automatically
+       (repository: <code>https://github.com/mteij/healthbridge</code>).</p>
+    <p>Sign in with this server's address: <code id="origin"></code></p>
+  </div>
+
+  <div class="card">
+    <h2>2. Create an API key for scripts and AI tools</h2>
+    <p>Keys are read-only. Log in once, then create one:</p>
+<pre>curl -s -X POST <span class="o"></span>/api/v2/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"you","password":"…"}'
+
+curl -s -X POST <span class="o"></span>/api/v2/apikeys \
+  -H "Authorization: Bearer &lt;token from login&gt;" \
+  -H 'Content-Type: application/json' -d '{"name":"my-agent"}'</pre>
+    <p>The key (<code>hb_…</code>) is shown once. Use it as <code>Authorization: Bearer hb_…</code>.</p>
+  </div>
+
+  <div class="card">
+    <h2>3. Use the data</h2>
+<pre>GET  <span class="o"></span>/api/v2/workouts?limit=5
+POST <span class="o"></span>/api/v2/fetch/steps
+POST <span class="o"></span>/mcp   (MCP server for AI assistants)</pre>
+    <p>MCP clients: add <code><span class="o"></span>/mcp</code> as a remote HTTP server and send the key as a Bearer token.
+       Tools: <code>get_overview</code>, <code>list_workouts</code>, <code>get_workout</code>,
+       <code>get_daily_totals</code>, <code>get_sleep</code>, <code>get_latest_measurements</code>.</p>
+  </div>
+
+  <footer>Healthbridge {{ version }} · <a href="https://github.com/mteij/healthbridge">source</a> · fork of HCGateway</footer>
+</main>
+<script>
+  document.getElementById("origin").textContent = location.origin;
+  document.querySelectorAll(".o").forEach(function (e) { e.textContent = location.origin; });
+  fetch("/healthz").then(function (r) { if (!r.ok) throw 0; document.getElementById("state").textContent = "online"; })
+    .catch(function () { document.getElementById("dot").className = "dot bad"; document.getElementById("state").textContent = "unreachable"; });
+</script>
+</body>
+</html>

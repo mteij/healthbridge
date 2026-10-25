@@ -1,24 +1,30 @@
-
+# Healthbridge, self-hosted.
+#
+#   curl -fsSL https://raw.githubusercontent.com/mteij/healthbridge/main/docker-compose.yml | docker compose -p healthbridge -f - up -d
+#
+# Then open http://localhost:6644 and put a reverse proxy with HTTPS in front of it before using
+# the phone app away from home. The first account that logs in becomes the owner and registration
+# closes afterwards, so sign in from the app right away.
 services:
   api:
-    image: ghcr.io/shuchirj/hcgateway:latest
+    image: ghcr.io/mteij/healthbridge:latest
+    restart: unless-stopped
     ports:
       - "6644:6644"
-    env_file:
-      - ./api/.env
-    container_name: hcgateway_api
-    restart: always
-    volumes:
-      - ./api/service-account.json:/app/service-account.json
-
-  db:
-    image: mongo
-    restart: always
-    ports:
-      - "27017:27017"
-    volumes:
-      - ./db:/data/db
-    container_name: hcgateway_db
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_URI: mongodb://db:27017/hcgateway
+      HB_TIMEZONE: ${HB_TIMEZONE:-Europe/Amsterdam}
+      # HB_DATA_KEY: a long random string to encrypt stored records (set it before the first sync)
+      # HB_ALLOW_REGISTRATION: "true"    # only if you want more than one account
+    depends_on:
+      - db
+
+  # MongoDB is only reachable from the api container: it publishes no port.
+  db:
+    image: mongo:8
+    restart: unless-stopped
+    volumes:
+      - db:/data/db
+
+volumes:
+  db:

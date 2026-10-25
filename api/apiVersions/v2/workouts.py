@@ -18,7 +18,7 @@ DEFAULT_LIMIT, MAX_LIMIT = 20, 200
 MARGIN_MS = 3 * 3600 * 1000
 
 
-def _series_for(userid, session, cipher):
+def series_for(userid, session, cipher):
     from datetime import timedelta
     start, end = parse_iso(session["start"]), parse_iso(session["end"])
     lo = to_iso(start - timedelta(milliseconds=MARGIN_MS))
@@ -32,8 +32,8 @@ def _series_for(userid, session, cipher):
     return series
 
 
-def _load_sessions(query, limit):
-    return list(db.records(g.user, "exerciseSession").find(query).sort("start", -1).limit(limit))
+def load_sessions(userid, query, limit):
+    return list(db.records(userid, "exerciseSession").find(query).sort("start", -1).limit(limit))
 
 
 @v2.get("/workouts")
@@ -51,7 +51,7 @@ def workouts():
 
     user = db.users().find_one({"_id": g.user})
     cipher = data_cipher(user)
-    sessions = decrypt_docs(_load_sessions(query, limit), cipher)
+    sessions = decrypt_docs(load_sessions(g.user, query, limit), cipher)
 
     wanted = args.get("type")
     include_samples = args.get("samples") in ("1", "true")
@@ -59,7 +59,7 @@ def workouts():
     for session in sessions:
         if wanted and type_name(session["data"].get("exerciseType")) != wanted.lower():
             continue
-        out.append(build_workout(session, _series_for(g.user, session, cipher), include_samples))
+        out.append(build_workout(session, series_for(g.user, session, cipher), include_samples))
     return jsonify(out), 200
 
 
@@ -71,4 +71,4 @@ def workout_detail(workout_id):
     if not sessions:
         return jsonify({"error": "workout not found"}), 404
     session = sessions[0]
-    return jsonify(build_workout(session, _series_for(g.user, session, cipher), True)), 200
+    return jsonify(build_workout(session, series_for(g.user, session, cipher), True)), 200

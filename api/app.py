@@ -2,7 +2,7 @@ import logging
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 
 load_dotenv()
@@ -17,6 +17,13 @@ def create_app():
 
     from apiVersions.v2 import init_app as init_v2
     init_v2(app)
+
+    from mcp_server import mcp
+    app.register_blueprint(mcp)
+
+    @app.get("/")
+    def landing():
+        return render_template("index.html", version=os.environ.get("HB_VERSION", "dev")), 200
 
     @app.get("/healthz")
     def healthz():

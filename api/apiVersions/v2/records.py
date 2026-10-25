@@ -13,7 +13,7 @@ from timeutil import canonical
 
 log = logging.getLogger("healthbridge.records")
 
-RECORD_TYPE = re.compile(r"^[A-Za-z]{1,40}$")
+RECORD_TYPE = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,39}$")  # digits: vo2Max
 FORBIDDEN_OPERATORS = {"$where", "$function", "$accumulator", "$expr"}
 MAX_FETCH = 20000
 
