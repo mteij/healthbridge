@@ -47,7 +47,7 @@ def sync(method):
     user = db.users().find_one({"_id": g.user})
     cipher = data_cipher(user)
 
-    ops = []
+    docs = []
     for index, item in enumerate(data):
         try:
             item_id = item["metadata"]["id"]
@@ -59,11 +59,17 @@ def sync(method):
         except (KeyError, TypeError, ValueError, AttributeError):
             return jsonify({"error": "invalid record", "index": index}), 400
         payload = {k: v for k, v in item.items() if k not in ("metadata", "time", "startTime", "endTime")}
-        encrypted, compressed = encode_payload(cipher, payload)
-        doc = {"_id": item_id, "data": encrypted, "app": origin, "start": start, "end": end}
+        docs.append({"_id": item_id, "app": origin, "start": start, "end": end, "payload": payload})
+
+    from rollup import drop_rolled_up
+    docs = drop_rolled_up(g.user, record_type, docs)
+    ops = []
+    for doc in docs:
+        encrypted, compressed = encode_payload(cipher, doc.pop("payload"))
+        doc["data"] = encrypted
         if compressed:
             doc["z"] = True
-        ops.append(ReplaceOne({"_id": item_id}, doc, upsert=True))
+        ops.append(ReplaceOne({"_id": doc["_id"]}, doc, upsert=True))
 
     if ops:
         db.records(g.user, record_type).bulk_write(ops, ordered=False)
@@ -80,6 +86,7 @@ def decrypt_docs(cursor, cipher):
             log.warning("could not decrypt record %s", doc.get("_id"))
             continue
         doc.pop("z", None)
+        doc.pop("agg", None)
         doc.setdefault("id", doc["_id"])
         docs.append(doc)
     return docs

@@ -20,6 +20,7 @@ services:
       HB_STALE_DAYS: ${HB_STALE_DAYS:-}
       HB_STALE_EXEMPT: ${HB_STALE_EXEMPT:-}
       HB_STALE_DRY_RUN: ${HB_STALE_DRY_RUN:-false}
+      HB_ROLLUP_DAYS: ${HB_ROLLUP_DAYS:-}
       HB_TIMEZONE: ${HB_TIMEZONE:-Europe/Amsterdam}
       HB_LOG_LEVEL: ${HB_LOG_LEVEL:-INFO}
     depends_on:

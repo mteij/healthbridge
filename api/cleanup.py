@@ -62,9 +62,16 @@ def run_cleanup(now=None, days=None, exempt=None, dry_run=None):
     return removed
 
 
+def _maintenance():
+    run_cleanup()
+    from rollup import run_rollup
+    run_rollup()
+
+
 def start_background_job():
+    from rollup import rollup_days
     days, _, _ = _config()
-    if days <= 0:
+    if days <= 0 and rollup_days() <= 0:
         return None
 
     def loop():
@@ -72,12 +79,12 @@ def start_background_job():
         while not stop.wait(CHECK_INTERVAL_SECONDS if _first_done.is_set() else 60):
             _first_done.set()
             try:
-                run_cleanup()
+                _maintenance()
             except Exception:
-                log.exception("stale data cleanup failed")
+                log.exception("background maintenance failed")
 
     _first_done = threading.Event()
     thread = threading.Thread(target=loop, name="stale-cleanup", daemon=True)
     thread.start()
-    log.info("stale data cleanup enabled: accounts inactive for %d days are deleted", days)
+    log.info("background maintenance enabled (stale days: %d, rollup days: %d)", days, rollup_days())
     return thread

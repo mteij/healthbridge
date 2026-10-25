@@ -136,7 +136,7 @@ class SyncEngine(
             }
             val upserts = response.changes.filterIsInstance<UpsertionChange>().map { spec.encode(it.record) }
             val deletions = response.changes.filterIsInstance<DeletionChange>().map { it.recordId }
-            upserts.chunked(UPLOAD_CHUNK).forEach { api.upload(spec.key, it) }
+            batches(upserts).forEach { api.upload(spec.key, it) }
             deletions.chunked(UPLOAD_CHUNK).forEach { api.delete(spec.key, it) }
             uploaded += upserts.size
             deleted += deletions.size
@@ -163,7 +163,7 @@ class SyncEngine(
         var uploaded = 0
         do {
             val page = spec.read(client, from, now, pageToken)
-            page.records.map { spec.encode(it) }.chunked(UPLOAD_CHUNK).forEach { api.upload(spec.key, it) }
+            batches(page.records.map { spec.encode(it) }).forEach { api.upload(spec.key, it) }
             uploaded += page.records.size
             pageToken = page.nextPageToken
         } while (pageToken != null)
@@ -172,8 +172,28 @@ class SyncEngine(
         return uploaded
     }
 
+    /** Fewer, larger requests: up to [MAX_BATCH_RECORDS] records or roughly [MAX_BATCH_CHARS] of JSON each. */
+    private fun batches(records: List<kotlinx.serialization.json.JsonObject>): List<List<kotlinx.serialization.json.JsonObject>> {
+        val out = mutableListOf<List<kotlinx.serialization.json.JsonObject>>()
+        var current = mutableListOf<kotlinx.serialization.json.JsonObject>()
+        var size = 0
+        for (record in records) {
+            val length = record.toString().length
+            if (current.isNotEmpty() && (current.size >= MAX_BATCH_RECORDS || size + length > MAX_BATCH_CHARS)) {
+                out += current
+                current = mutableListOf()
+                size = 0
+            }
+            current += record
+            size += length
+        }
+        if (current.isNotEmpty()) out += current
+        return out
+    }
+
     private companion object {
-        const val UPLOAD_CHUNK = 200
+        const val MAX_BATCH_RECORDS = 1000
+        const val MAX_BATCH_CHARS = 2_000_000
         const val MAX_DAYS_WITHOUT_HISTORY = 29
     }
 }

@@ -136,7 +136,7 @@ fun OverviewScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.recent_workouts), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                TextButton(onClick = { vm.loadWorkouts() }) { Icon(Icons.Filled.Refresh, null); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.refresh)) }
+                TextButton(onClick = { vm.loadWorkouts(force = true) }) { Icon(Icons.Filled.Refresh, null); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.refresh)) }
             }
         }
         workoutsError?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }

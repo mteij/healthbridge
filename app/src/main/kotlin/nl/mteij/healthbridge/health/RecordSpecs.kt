@@ -111,7 +111,7 @@ class Spec<T : Record>(
     }
 
     companion object {
-        const val PAGE_SIZE = 500
+        const val PAGE_SIZE = 1000
     }
 }
 
@@ -123,37 +123,19 @@ private inline fun <reified T : Record> spec(
 
 
 private fun JsonObjectBuilder.length(name: String, l: androidx.health.connect.client.units.Length) =
-    put(name, buildJsonObject {
-        put("inMeters", l.inMeters)
-        put("inKilometers", l.inKilometers)
-        put("inMiles", l.inMiles)
-        put("inFeet", l.inFeet)
-        put("inInches", l.inInches)
-    })
+    put(name, buildJsonObject { put("inMeters", l.inMeters) })
 
 private fun JsonObjectBuilder.energy(name: String, e: androidx.health.connect.client.units.Energy) =
-    put(name, buildJsonObject {
-        put("inKilocalories", e.inKilocalories)
-        put("inCalories", e.inCalories)
-        put("inKilojoules", e.inKilojoules)
-        put("inJoules", e.inJoules)
-    })
+    put(name, buildJsonObject { put("inKilocalories", e.inKilocalories) })
 
 private fun JsonObjectBuilder.mass(name: String, m: androidx.health.connect.client.units.Mass) =
-    put(name, buildJsonObject {
-        put("inKilograms", m.inKilograms)
-        put("inGrams", m.inGrams)
-        put("inPounds", m.inPounds)
-    })
+    put(name, buildJsonObject { put("inKilograms", m.inKilograms) })
 
 private fun JsonObjectBuilder.percentage(name: String, p: androidx.health.connect.client.units.Percentage) =
     put(name, buildJsonObject { put("value", p.value) })
 
 private fun JsonObjectBuilder.power(name: String, p: androidx.health.connect.client.units.Power) =
-    put(name, buildJsonObject {
-        put("inWatts", p.inWatts)
-        put("inKilocaloriesPerDay", p.inKilocaloriesPerDay)
-    })
+    put(name, buildJsonObject { put("inWatts", p.inWatts) })
 
 object RecordSpecs {
     val all: List<Spec<out Record>> = listOf(
@@ -197,11 +179,7 @@ object RecordSpecs {
                 r.samples.forEach { s ->
                     add(buildJsonObject {
                         put("time", s.time.toString())
-                        put("speed", buildJsonObject {
-                            put("inMetersPerSecond", s.speed.inMetersPerSecond)
-                            put("inKilometersPerHour", s.speed.inKilometersPerHour)
-                            put("inMilesPerHour", s.speed.inMilesPerHour)
-                        })
+                        put("speed", buildJsonObject { put("inMetersPerSecond", s.speed.inMetersPerSecond) })
                     })
                 }
             })
@@ -244,16 +222,13 @@ object RecordSpecs {
             put("diastolic", buildJsonObject { put("inMillimetersOfMercury", r.diastolic.inMillimetersOfMercury) })
         },
         spec<BloodGlucoseRecord>("bloodGlucose", "Blood glucose") { r ->
-            put("level", buildJsonObject {
-                put("inMillimolesPerLiter", r.level.inMillimolesPerLiter)
-                put("inMilligramsPerDeciliter", r.level.inMilligramsPerDeciliter)
-            })
+            put("level", buildJsonObject { put("inMillimolesPerLiter", r.level.inMillimolesPerLiter) })
         },
         spec<BodyTemperatureRecord>("bodyTemperature", "Body temperature") { r ->
             put("temperature", buildJsonObject { put("inCelsius", r.temperature.inCelsius) })
         },
         spec<BasalMetabolicRateRecord>("basalMetabolicRate", "Basal metabolic rate") { r ->
-            power("basalMetabolicRate", r.basalMetabolicRate)
+            put("basalMetabolicRate", buildJsonObject { put("inKilocaloriesPerDay", r.basalMetabolicRate.inKilocaloriesPerDay) })
         },
         spec<PowerRecord>("power", "Power") { r ->
             put("samples", buildJsonArray {
@@ -277,10 +252,7 @@ object RecordSpecs {
         },
         spec<FloorsClimbedRecord>("floorsClimbed", "Floors climbed") { r -> put("floors", r.floors) },
         spec<HydrationRecord>("hydration", "Hydration") { r ->
-            put("volume", buildJsonObject {
-                put("inLiters", r.volume.inLiters)
-                put("inMilliliters", r.volume.inMilliliters)
-            })
+            put("volume", buildJsonObject { put("inLiters", r.volume.inLiters) })
         },
     )
 

@@ -40,6 +40,7 @@ object SyncScheduler {
 
     private fun constraints(prefs: Prefs) = Constraints.Builder()
         .setRequiredNetworkType(if (prefs.unmeteredOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+        .setRequiresBatteryNotLow(true)
         .build()
 
     fun schedule(context: Context, prefs: Prefs) {

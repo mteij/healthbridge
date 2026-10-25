@@ -48,8 +48,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun loadWorkouts() {
+    private var workoutsLoadedAt = 0L
+
+    fun loadWorkouts(force: Boolean = false) {
         if (!Graph.prefs.isLoggedIn) return
+        val now = System.currentTimeMillis()
+        if (!force && now - workoutsLoadedAt < 60_000) return
+        workoutsLoadedAt = now
         viewModelScope.launch {
             runCatching { Graph.api.workouts() }
                 .onSuccess {

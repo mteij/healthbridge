@@ -67,11 +67,12 @@ cp .env.example .env && docker compose up -d
 | `HB_STALE_DAYS` | Delete accounts, and all their data, inactive for this many days. Any sync, login or API key use counts as activity | disabled |
 | `HB_STALE_EXEMPT` | Comma separated usernames that are never deleted | none |
 | `HB_STALE_DRY_RUN` | `true` to only log what would be deleted | `false` |
+| `HB_ROLLUP_DAYS` | Merge minute-level steps, distance and calories older than this many days into hourly totals (~10× less storage). Newer records stay exact | disabled |
 | `HB_TIMEZONE` | Timezone for daily totals and sleep dates in the MCP tools | `Europe/Amsterdam` |
 | `HB_LOG_LEVEL` | Log level | `INFO` |
 | `FCM_PROJECT_ID` | Only for the optional push/delete-to-device endpoints (needs a Firebase `service-account.json`) | empty |
 
-Back up the `db` volume. Data written with the old encryption can be converted with `scripts/reencrypt.py` after you set `HB_DATA_KEY`.
+Existing data can be compressed once with `scripts/compact.py`. Back up the `db` volume. Data written with the old encryption can be converted with `scripts/reencrypt.py` after you set `HB_DATA_KEY`.
 </details>
 
 ## Use your data

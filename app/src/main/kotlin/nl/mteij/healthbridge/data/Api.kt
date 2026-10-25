@@ -12,10 +12,15 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import okio.Buffer
+import okio.GzipSink
+import okio.buffer
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -43,11 +48,29 @@ data class Workout(
     @SerialName("pace_s_per_km") val paceSPerKm: Long? = null,
 )
 
+/** Compresses larger request bodies; the server accepts `Content-Encoding: gzip`. */
+private object GzipRequestInterceptor : Interceptor {
+    private const val MIN_BYTES = 1024L
+
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        val body = request.body
+        if (body == null || request.header("Content-Encoding") != null || body.contentLength() in 0 until MIN_BYTES) {
+            return chain.proceed(request)
+        }
+        val buffer = Buffer()
+        GzipSink(buffer).buffer().use { body.writeTo(it) }
+        val compressed = buffer.readByteString().toRequestBody(body.contentType())
+        return chain.proceed(request.newBuilder().header("Content-Encoding", "gzip").method(request.method, compressed).build())
+    }
+}
+
 class Api(private val prefs: Prefs) {
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
+        .addInterceptor(GzipRequestInterceptor)
         .build()
     private val json = Json { ignoreUnknownKeys = true }
     private val jsonType = "application/json".toMediaType()
