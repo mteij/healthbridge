@@ -1,6 +1,6 @@
 """Re-encrypt stored records with the key derived from HB_DATA_KEY.
 
-Upstream HCGateway derives its encryption key from a constant prefix of the password
+The original implementation derives its encryption key from a constant prefix of the password
 hash, so all data shares one effectively public key. Set HB_DATA_KEY to a long random
 string (the server then writes new records with it and still reads old ones), then run
 this once to convert existing records:

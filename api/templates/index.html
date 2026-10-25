@@ -74,7 +74,7 @@
   </div>
   <p class="note" id="note">Best-effort public instance, no uptime promises.</p>
 </main>
-<footer>Healthbridge <span id="version">{{ version }}</span> · <a href="https://github.com/mteij/healthbridge">GitHub</a> · fork of HCGateway</footer>
+<footer>Healthbridge <span id="version">{{ version }}</span> · <a href="https://github.com/mteij/healthbridge">GitHub</a></footer>
 <script>
   var $ = function (id) { return document.getElementById(id); };
   fetch("/status").then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (s) {

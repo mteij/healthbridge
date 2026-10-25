@@ -123,7 +123,6 @@ Under `/api/v2`. Authenticate with the app's login session or an API key (keys a
 | `GET /healthz` · `GET /status` | Health check and public status (version, open sign-ups, spots left), no auth |
 
 Record types are lowerCamelCase Health Connect names: `steps`, `heartRate`, `exerciseSession`, `sleepSession`, `vo2Max`, …
-Upstream HCGateway's v2 routes stay compatible.
 </details>
 
 <details>
@@ -140,6 +139,6 @@ CI builds and signs the APK and attaches it to every `v*` release (`.github/work
 `ghcr.io/mteij/healthbridge` (`docker.yml`). To sign with your own key set the secrets `HB_KEYSTORE_B64`, `HB_KEYSTORE_PASSWORD`, `HB_KEY_ALIAS`.
 </details>
 
-## Credits
+## License
 
-Hard fork of [HCGateway](https://github.com/ShuchirJ/HCGateway) by Shuchir Jain. MIT licensed.
+GPL-3.0, see [LICENSE](LICENSE). Based on [HCGateway](https://github.com/ShuchirJ/HCGateway) by Shuchir Jain; the GPL requires keeping that attribution.

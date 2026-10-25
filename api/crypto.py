@@ -6,7 +6,7 @@ from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 
 def _legacy_fernet(user):
-    # Upstream derives the key from the first 32 characters of the argon2 hash,
+    # The original implementation derives the key from the first 32 characters of the argon2 hash,
     # which is only the (constant) parameter prefix. Kept so existing data stays
     # readable; set HB_DATA_KEY and run scripts/reencrypt.py to move away from it.
     key = base64.urlsafe_b64encode(user["password"].encode("utf-8").ljust(32)[:32])
