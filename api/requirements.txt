@@ -1,10 +1,8 @@
-﻿argon2-cffi==23.1.0
-cryptography==44.0.1
-Flask==3.0.3
-Flask-Cors==6.0.0
-python-dotenv==1.0.1
-requests==2.32.3
-sentry-sdk==2.16.0
+argon2-cffi>=23.1,<26
+cryptography>=44,<47
+Flask>=3.1,<3.2
+Flask-Cors>=6,<7
+gunicorn>=23,<24
+pymongo>=4.10,<5
+python-dotenv>=1.0,<2
 pyfcm==2.0.7
-pymongo==4.10.1
-sentry-sdk
