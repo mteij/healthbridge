@@ -36,7 +36,8 @@ jobs:
       - name: Restore release keystore
         if: env.HB_KEYSTORE_B64 != ''
         run: |
-          echo "$HB_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/healthbridge.jks"
+          printf '%s' "$HB_KEYSTORE_B64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/healthbridge.jks"
+          ls -l "$RUNNER_TEMP/healthbridge.jks"
           echo "HB_KEYSTORE=$RUNNER_TEMP/healthbridge.jks" >> "$GITHUB_ENV"
           echo "HB_KEY_PASSWORD=$HB_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
 
