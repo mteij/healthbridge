@@ -15,10 +15,6 @@
 
 </div>
 
-```
-Samsung Health · Strava · watch  ─▶  Health Connect  ─▶  Healthbridge app  ─▶  your server  ─▶  REST API · MCP
-```
-
 ## Why
 
 Health Connect keeps a workout, its heart rate, distance and calories as separate records. Healthbridge
