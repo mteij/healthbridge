@@ -69,6 +69,13 @@ class Prefs(context: Context) {
         get() = sp.getStringSet("disabledTypes", emptySet())!!.toSet()
         set(v) = put { putStringSet("disabledTypes", v) }
 
+    var stepGoal: Int
+        get() = sp.getInt("stepGoal", 8000)
+        set(v) = put { putInt("stepGoal", v) }
+    var maxHeartRate: Int
+        get() = sp.getInt("maxHeartRate", 190)
+        set(v) = put { putInt("maxHeartRate", v) }
+
     var lastRunMs: Long
         get() = sp.getLong("lastRunMs", 0)
         set(v) = put { putLong("lastRunMs", v) }

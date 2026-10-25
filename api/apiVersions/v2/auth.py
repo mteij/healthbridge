@@ -19,7 +19,7 @@ ph = PasswordHasher()
 SESSION_HOURS = 12
 API_KEY_PREFIX = "hb_"
 # endpoints a read-only API key may call
-READ_ONLY_ENDPOINTS = {"v2.fetch", "v2.workouts", "v2.workout_detail"}
+READ_ONLY_ENDPOINTS = {"v2.fetch", "v2.workouts", "v2.workout_detail", "v2.overview", "v2.daily", "v2.sleep_nights", "v2.measurements"}
 PUBLIC_ENDPOINTS = {"v2.login", "v2.refresh"}
 
 MAX_FAILURES = 10

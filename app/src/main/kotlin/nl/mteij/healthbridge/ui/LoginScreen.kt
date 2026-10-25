@@ -46,7 +46,6 @@ fun LoginScreen(vm: AppViewModel) {
         ) {
             Spacer(Modifier.height(32.dp))
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall)
-            Text(stringResource(R.string.login_intro), style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = server, onValueChange = { server = it }, singleLine = true,

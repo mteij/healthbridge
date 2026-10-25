@@ -26,3 +26,31 @@ def test_workouts_endpoint_end_to_end(client, session):
     assert detail["samples"]["heart_rate"][0]["bpm"] == 150
     assert client.get("/api/v2/workouts/nope", headers=auth(key)).status_code == 404
     assert client.get("/api/v2/workouts?limit=abc", headers=auth(key)).status_code == 400
+
+
+def test_dashboard_endpoints_for_the_app(client, session):
+    import datetime
+    t = session["token"]
+    today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    client.post("/api/v2/sync/steps", headers=auth(t), json={"data": [
+        {"metadata": {"id": "s1", "dataOrigin": "phone"}, "startTime": f"{today}T01:00:00Z", "endTime": f"{today}T01:30:00Z", "count": 4200}]})
+    samples = [{"time": f"{today}T10:{m:02d}:00Z", "beatsPerMinute": 100 + m} for m in range(50)]
+    client.post("/api/v2/sync/exerciseSession", headers=auth(t), json={"data": [
+        {"metadata": {"id": "w1", "dataOrigin": "phone"}, "startTime": f"{today}T10:00:00Z", "endTime": f"{today}T10:50:00Z", "exerciseType": 56}]})
+    client.post("/api/v2/sync/heartRate", headers=auth(t), json={"data": [
+        {"metadata": {"id": "h1", "dataOrigin": "phone"}, "startTime": f"{today}T10:00:00Z", "endTime": f"{today}T10:50:00Z", "samples": samples}]})
+    key = client.post("/api/v2/apikeys", json={"name": "k"}, headers=auth(t)).get_json()["key"]
+
+    data = client.get("/api/v2/overview?tz=UTC", headers=auth(key)).get_json()
+    assert data["date"] == today and len(data["daily"]["steps"]) == 7 and data["daily"]["steps"][-1]["value"] == 4200
+    assert data["recent_workouts"][0]["type"] == "running" and data["recent_workouts"][0]["heart_rate"]["max"] == 149
+    assert {m["metric"] for m in data["measurements"]} >= {"weight", "vo2_max"}
+
+    days = client.get(f"/api/v2/daily?metric=steps&from={today}&to={today}&tz=UTC", headers=auth(key)).get_json()
+    assert days[0]["value"] == 4200
+    assert client.get("/api/v2/daily?metric=nope&from=2026-01-01&to=2026-01-02", headers=auth(key)).status_code == 400
+    assert client.get(f"/api/v2/sleep?from={today}&to={today}", headers=auth(key)).get_json() == []
+    assert len(client.get("/api/v2/measurements", headers=auth(key)).get_json()) >= 5
+
+    detail = client.get("/api/v2/workouts/w1?points=10", headers=auth(key)).get_json()
+    assert len(detail["samples"]["heart_rate"]) == 10

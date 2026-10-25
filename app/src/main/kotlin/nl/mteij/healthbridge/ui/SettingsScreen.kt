@@ -4,6 +4,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,7 +30,7 @@ import nl.mteij.healthbridge.R
 import nl.mteij.healthbridge.health.RecordSpecs
 
 @Composable
-fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
+fun SettingsScreen(vm: AppViewModel, onLog: () -> Unit, modifier: Modifier = Modifier) {
     val prefs = Graph.prefs
     val version by prefs.version.collectAsState()
     // reading `version` makes this recompose whenever a preference changes
@@ -43,12 +45,25 @@ fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
     ) {
         Text(stringResource(R.string.tab_settings), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 16.dp))
 
-        Text(stringResource(R.string.account), style = MaterialTheme.typography.titleMedium)
-        Text("${prefs.username} @ ${prefs.serverUrl}", style = MaterialTheme.typography.bodyMedium)
+        Text("${prefs.username} · ${prefs.serverUrl.removePrefix("https://")}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick = onLog) { Text(stringResource(R.string.sync_log)) }
+
+        HorizontalDivider()
+        Text(stringResource(R.string.daily_goal), style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(6000, 8000, 10000, 12000).forEach { goal ->
+                FilterChip(selected = prefs.stepGoal == goal, onClick = { prefs.stepGoal = goal }, label = { Text("%,d".format(goal)) })
+            }
+        }
+        Text(stringResource(R.string.max_heart_rate), style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(170, 180, 190, 200, 210).forEach { hr ->
+                FilterChip(selected = prefs.maxHeartRate == hr, onClick = { prefs.maxHeartRate = hr }, label = { Text("$hr") })
+            }
+        }
 
         HorizontalDivider()
         Text(stringResource(R.string.sync_interval), style = MaterialTheme.typography.titleMedium)
-        Text(stringResource(R.string.sync_interval_hint), style = MaterialTheme.typography.bodySmall)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(15 to "15 min", 30 to "30 min", 60 to "1 h", 180 to "3 h", 360 to "6 h").forEach { (minutes, label) ->
                 FilterChip(
@@ -62,14 +77,12 @@ fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.unmetered_only), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.unmetered_hint), style = MaterialTheme.typography.bodySmall)
             }
             Switch(checked = unmetered, onCheckedChange = { prefs.unmeteredOnly = it; vm.reschedule() })
         }
 
         HorizontalDivider()
         Text(stringResource(R.string.backfill), style = MaterialTheme.typography.titleMedium)
-        Text(stringResource(R.string.backfill_hint), style = MaterialTheme.typography.bodySmall)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(30, 90, 180, 365).forEach { days ->
                 FilterChip(selected = backfill == days, onClick = { prefs.backfillDays = days }, label = { Text("$days") })
@@ -92,6 +105,6 @@ fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
         HorizontalDivider()
         OutlinedButton(onClick = { vm.logout() }) { Text(stringResource(R.string.sign_out)) }
         Text(stringResource(R.string.version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall)
-        Text("", Modifier.padding(16.dp))
+        Spacer(Modifier.height(24.dp))
     }
 }

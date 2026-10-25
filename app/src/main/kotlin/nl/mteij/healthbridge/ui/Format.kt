@@ -44,3 +44,47 @@ fun workoutEmoji(type: String): String = when {
     type == "rowing" || type == "rowing_machine" -> "🚣"
     else -> "💪"
 }
+
+fun weekdayShort(isoDate: String): String = runCatching {
+    java.time.LocalDate.parse(isoDate).dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.getDefault())
+}.getOrDefault("")
+
+fun monthTitle(iso: String): String = runCatching {
+    java.time.format.DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())
+        .format(Instant.parse(iso).atZone(ZoneId.systemDefault()))
+}.getOrDefault("")
+
+fun dayAndTime(iso: String): String = runCatching {
+    java.time.format.DateTimeFormatter.ofPattern("EEE d MMM · HH:mm", Locale.getDefault())
+        .format(Instant.parse(iso).atZone(ZoneId.systemDefault()))
+}.getOrDefault(iso)
+
+fun clock(iso: String): String = runCatching {
+    java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(Instant.parse(iso).atZone(ZoneId.systemDefault()))
+}.getOrDefault("")
+
+fun epochSeconds(iso: String): Double = Instant.parse(iso).epochSecond.toDouble()
+
+fun clockFromEpoch(seconds: Double): String =
+    java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(Instant.ofEpochSecond(seconds.toLong()).atZone(ZoneId.systemDefault()))
+
+fun elapsedFromEpoch(start: Double): (Double) -> String = { seconds -> duration((seconds - start).toLong().coerceAtLeast(0)) }
+
+fun hoursMinutes(minutes: Int): String = "${minutes / 60} h ${minutes % 60} min"
+
+fun number(value: Double?, digits: Int = 0): String =
+    if (value == null) "–" else String.format(Locale.getDefault(), "%,.${digits}f", value)
+
+/** Friendly name for the Android package that wrote a record. */
+fun sourceName(packageName: String?): String = when {
+    packageName == null -> "–"
+    packageName.contains("shealth") || packageName.contains("samsung.android.app.health") -> "Samsung Health"
+    packageName.contains("strava") -> "Strava"
+    packageName.contains("google.android.apps.fitness") -> "Google Fit"
+    packageName.contains("garmin") -> "Garmin Connect"
+    packageName.contains("fitbit") -> "Fitbit"
+    packageName.startsWith("com.android.healthconnect") -> "Phone"
+    else -> packageName.substringAfterLast('.')
+}
+
+fun speedKmh(mps: Double) = mps * 3.6

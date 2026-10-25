@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,15 +24,18 @@ import nl.mteij.healthbridge.R
 import nl.mteij.healthbridge.data.LogEntry
 
 @Composable
-fun ActivityScreen(modifier: Modifier = Modifier) {
+fun ActivityScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val entries by Graph.log.entries.collectAsState()
     LazyColumn(
         modifier.statusBarsPadding().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.tab_activity), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.IconButton(onClick = onBack) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
+                }
+                Text(stringResource(R.string.sync_log), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 TextButton(onClick = { Graph.log.clear() }) { Text(stringResource(R.string.clear)) }
             }
         }

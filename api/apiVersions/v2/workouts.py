@@ -37,6 +37,13 @@ def series_for(userid, session, cipher):
     return series
 
 
+def downsample(points, limit):
+    if len(points) <= limit:
+        return points
+    step = len(points) / limit
+    return [points[int(i * step)] for i in range(limit)]
+
+
 def load_sessions(userid, query, limit):
     return list(db.records(userid, "exerciseSession").find(query).sort("start", -1).limit(limit))
 
@@ -76,4 +83,11 @@ def workout_detail(workout_id):
     if not sessions:
         return jsonify({"error": "workout not found"}), 404
     session = sessions[0]
-    return jsonify(build_workout(session, series_for(g.user, session, cipher), True)), 200
+    workout = build_workout(session, series_for(g.user, session, cipher), True)
+    try:
+        points = int(request.args.get("points", 0))
+    except ValueError:
+        return jsonify({"error": "invalid points"}), 400
+    if points > 0:
+        workout["samples"] = {k: downsample(v, points) for k, v in workout["samples"].items()}
+    return jsonify(workout), 200

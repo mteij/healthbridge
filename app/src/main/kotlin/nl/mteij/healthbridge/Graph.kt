@@ -2,6 +2,7 @@ package nl.mteij.healthbridge
 
 import android.app.Application
 import nl.mteij.healthbridge.data.Api
+import nl.mteij.healthbridge.data.Cache
 import nl.mteij.healthbridge.data.Prefs
 import nl.mteij.healthbridge.data.SyncLog
 import nl.mteij.healthbridge.sync.SyncEngine
@@ -16,11 +17,14 @@ object Graph {
         private set
     lateinit var engine: SyncEngine
         private set
+    lateinit var cache: Cache
+        private set
 
     fun init(app: Application) {
         prefs = Prefs(app)
         log = SyncLog(app)
         api = Api(prefs)
+        cache = Cache(app)
         engine = SyncEngine(app, prefs, api, log)
     }
 }

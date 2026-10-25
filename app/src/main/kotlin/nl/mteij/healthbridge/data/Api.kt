@@ -31,6 +31,43 @@ class ApiException(val code: Int, message: String) : IOException(message)
 data class HeartRateStats(val avg: Int, val min: Int, val max: Int, val samples: Int)
 
 @Serializable
+data class HrPoint(val t: String, val bpm: Int)
+
+@Serializable
+data class SpeedPoint(val t: String, val mps: Double)
+
+@Serializable
+data class Samples(
+    @SerialName("heart_rate") val heartRate: List<HrPoint> = emptyList(),
+    val speed: List<SpeedPoint> = emptyList(),
+)
+
+@Serializable
+data class DayTotal(val date: String, val value: Double? = null, val unit: String = "", val source: String? = null)
+
+@Serializable
+data class Measurement(val metric: String, val value: Double? = null, val unit: String = "", val time: String? = null)
+
+@Serializable
+data class SleepNight(
+    val date: String,
+    val start: String,
+    val end: String? = null,
+    @SerialName("in_bed_min") val inBedMin: Int = 0,
+    @SerialName("asleep_min") val asleepMin: Int? = null,
+    @SerialName("stages_min") val stagesMin: Map<String, Int> = emptyMap(),
+)
+
+@Serializable
+data class OverviewData(
+    val date: String,
+    val daily: Map<String, List<DayTotal>> = emptyMap(),
+    val sleep: List<SleepNight> = emptyList(),
+    val measurements: List<Measurement> = emptyList(),
+    @SerialName("recent_workouts") val recentWorkouts: List<Workout> = emptyList(),
+)
+
+@Serializable
 data class Workout(
     val id: String,
     val type: String,
@@ -46,6 +83,10 @@ data class Workout(
     @SerialName("heart_rate") val heartRate: HeartRateStats? = null,
     @SerialName("avg_speed_mps") val avgSpeedMps: Double? = null,
     @SerialName("pace_s_per_km") val paceSPerKm: Long? = null,
+    @SerialName("max_speed_mps") val maxSpeedMps: Double? = null,
+    @SerialName("elevation_gain_m") val elevationGainM: Double? = null,
+    val notes: String? = null,
+    val samples: Samples? = null,
 )
 
 /** Compresses larger request bodies; the server accepts `Content-Encoding: gzip`. */
@@ -154,9 +195,11 @@ class Api(private val prefs: Prefs) {
         authed { it.url(url("sync/$type")).delete(body) }
     }
 
-    suspend fun workouts(limit: Int = 30): List<Workout> = withContext(Dispatchers.IO) {
-        val text = authed { it.url(url("workouts?limit=$limit")).get() }
-        json.decodeFromString(ListSerializer(Workout.serializer()), text)
+    /** Raw JSON of a GET endpoint, so callers can cache the text and decode it themselves. */
+    suspend fun getText(path: String): String = withContext(Dispatchers.IO) {
+        authed { it.url(url(path)).get() }
     }
+
+    val format: Json get() = json
 
 }

@@ -137,7 +137,7 @@ class SyncEngine(
             val upserts = response.changes.filterIsInstance<UpsertionChange>().map { spec.encode(it.record) }
             val deletions = response.changes.filterIsInstance<DeletionChange>().map { it.recordId }
             batches(upserts).forEach { api.upload(spec.key, it) }
-            deletions.chunked(UPLOAD_CHUNK).forEach { api.delete(spec.key, it) }
+            deletions.chunked(MAX_BATCH_RECORDS).forEach { api.delete(spec.key, it) }
             uploaded += upserts.size
             deleted += deletions.size
             current = response.nextChangesToken

@@ -13,14 +13,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import nl.mteij.healthbridge.Graph
 import nl.mteij.healthbridge.R
+
+private data class Tab(val route: String, val label: Int, val icon: ImageVector)
+
+private val Tabs = listOf(
+    Tab("home", R.string.tab_home, Icons.Filled.Home),
+    Tab("workouts", R.string.tab_workouts, Icons.AutoMirrored.Filled.List),
+    Tab("settings", R.string.tab_settings, Icons.Filled.Settings),
+)
 
 @Composable
 fun Root(vm: AppViewModel = viewModel()) {
@@ -30,30 +41,42 @@ fun Root(vm: AppViewModel = viewModel()) {
         return
     }
 
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val nav = rememberNavController()
+    val route = nav.currentBackStackEntryAsState().value?.destination?.route
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = tab == 0, onClick = { tab = 0 },
-                    icon = { Icon(Icons.Filled.Home, null) }, label = { Text(stringResource(R.string.tab_overview)) },
-                )
-                NavigationBarItem(
-                    selected = tab == 1, onClick = { tab = 1 },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, null) }, label = { Text(stringResource(R.string.tab_activity)) },
-                )
-                NavigationBarItem(
-                    selected = tab == 2, onClick = { tab = 2 },
-                    icon = { Icon(Icons.Filled.Settings, null) }, label = { Text(stringResource(R.string.tab_settings)) },
-                )
+            if (route in Tabs.map { it.route }) {
+                NavigationBar {
+                    Tabs.forEach { tab ->
+                        NavigationBarItem(
+                            selected = route == tab.route,
+                            onClick = {
+                                nav.navigate(tab.route) {
+                                    popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(tab.icon, null) },
+                            label = { Text(stringResource(tab.label)) },
+                        )
+                    }
+                }
             }
         },
     ) { padding ->
         val modifier = Modifier.padding(padding)
-        when (tab) {
-            0 -> OverviewScreen(vm, modifier)
-            1 -> ActivityScreen(modifier)
-            else -> SettingsScreen(vm, modifier)
+        NavHost(nav, startDestination = "home", modifier = modifier) {
+            composable("home") {
+                HomeScreen(vm, onWorkout = { nav.navigate("workout/$it") }, onWorkouts = { nav.navigate("workouts") }, onSleep = { nav.navigate("sleep") })
+            }
+            composable("workouts") { WorkoutsScreen(vm, onWorkout = { nav.navigate("workout/$it") }) }
+            composable("settings") { SettingsScreen(vm, onLog = { nav.navigate("log") }) }
+            composable("workout/{id}") { entry ->
+                WorkoutDetailScreen(vm, entry.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() })
+            }
+            composable("sleep") { SleepScreen(vm, onBack = { nav.popBackStack() }) }
+            composable("log") { ActivityScreen(onBack = { nav.popBackStack() }) }
         }
     }
 }
