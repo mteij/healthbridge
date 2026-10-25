@@ -96,9 +96,13 @@ def authenticate():
 
 
 def _registration_allowed():
-    if os.environ.get("HB_ALLOW_REGISTRATION", "").lower() in ("1", "true", "yes"):
+    count = db.users().count_documents({})
+    if count == 0:
         return True
-    return db.users().count_documents({}, limit=1) == 0
+    if os.environ.get("HB_ALLOW_REGISTRATION", "").lower() not in ("1", "true", "yes"):
+        return False
+    limit = os.environ.get("HB_MAX_USERS")
+    return not (limit and limit.isdigit() and count >= int(limit))
 
 
 @v2.post("/login")

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="256" height="256" role="img" aria-label="Healthbridge">
+  <rect width="108" height="108" rx="24" fill="#022236"/>
+  <path d="M24 70 C24 48 40 36 54 36 C68 36 84 48 84 70" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M20 62 L40 62 L47 48 L55 76 L62 56 L67 62 L88 62" fill="none" stroke="#4FD1C5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

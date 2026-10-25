@@ -1,144 +1,141 @@
+<div align="center">
+
+<img src="docs/logo.svg" width="96" alt="Healthbridge logo">
+
 # Healthbridge
 
-Your Android Health Connect data on your own server, with a REST API and an MCP server so scripts
-and AI assistants can use it.
+**Your Android Health Connect data on your own server — with an API and an MCP server for your scripts and AI assistants.**
 
-A hard fork of [HCGateway](https://github.com/ShuchirJ/HCGateway) by Shuchir Jain (MIT), with a
-rewritten server and a new native Android app.
+[![Release](https://img.shields.io/github/v/release/mteij/healthbridge?style=flat-square&color=0b6e8a)](../../releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/mteij/healthbridge/android.yml?style=flat-square&label=build)](../../actions)
+[![Docker](https://img.shields.io/badge/ghcr.io-mteij%2Fhealthbridge-0b6e8a?style=flat-square&logo=docker&logoColor=white)](../../pkgs/container/healthbridge)
+[![License](https://img.shields.io/github/license/mteij/healthbridge?style=flat-square)](LICENSE)
+
+[**Public instance**](https://healthbridge.mteij.nl) · [**Download the app**](../../releases/latest) · [**Add to Obtainium**](obtainium://add/https://github.com/mteij/healthbridge) · [**Self-host**](#self-host)
+
+</div>
 
 ```
-Samsung Health / Strava / watch ─▶ Health Connect ─▶ Healthbridge app ─▶ your server ─▶ API · MCP
+Samsung Health · Strava · watch  ─▶  Health Connect  ─▶  Healthbridge app  ─▶  your server  ─▶  REST API · MCP
 ```
 
-## Features
+## Why
 
-- **Native Android app** (Kotlin, Compose). Uses the Health Connect *changes API*: the first run
-  imports the last N days, later runs only send what is new, edited or deleted. Background sync via
-  WorkManager. Errors are shown on the Activity tab instead of being skipped silently, and the
-  Overview tab checks the things that break background sync in practice (background-read permission,
-  history permission, battery optimisation).
-- **Workouts that make sense.** Health Connect stores heart rate, distance and calories as separate
-  records. `GET /api/v2/workouts` joins them to the matching exercise session, without double
-  counting data several apps report for the same activity.
-- **MCP server** at `/mcp` for AI assistants (read-only tools).
-- **Read-only API keys** for scripts and agents, so they never touch the phone's login session.
-- Production server (gunicorn), non-root container, no payload logging, login rate limiting,
-  registration that closes after the first account.
+Health Connect keeps a workout, its heart rate, distance and calories as separate records. Healthbridge
+syncs them off your phone reliably and puts them back together:
+
+- 🔄 **Reliable sync.** Uses Health Connect's changes API: one import, then only what is new, edited or deleted. Failures show up in the app instead of vanishing.
+- 🏃 **Real workouts.** `GET /api/v2/workouts` joins sessions with heart rate, distance, speed and energy, without double counting apps that report the same activity.
+- 🤖 **AI-ready.** A built-in [MCP server](#mcp) lets assistants like Claude read your data (read-only).
+- 🔑 **Safe by default.** Read-only API keys, rate-limited logins, no payload logging, non-root container.
+
+## Quick start
+
+| | |
+|---|---|
+| **1. Get the app** | [Download the APK](../../releases/latest) or [add it to Obtainium](obtainium://add/https://github.com/mteij/healthbridge) for automatic updates. Android 9+ with Health Connect. |
+| **2. Pick a server** | Use the [public instance](#public-instance) or [self-host](#self-host). |
+| **3. Sign in** | Enter the server address and a username and password (the first sign-in creates the account), then follow the checklist on the Overview tab. |
+
+### Public instance
+
+**https://healthbridge.mteij.nl** is a free instance run by the maintainer. **Best effort: no uptime, retention or support
+promises**, and the number of accounts is capped. Your records are stored on the maintainer's server and could technically be read by them,
+so for anything sensitive, [self-host](#self-host).
 
 ## Self-host
-
-One line (Docker with the compose plugin):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/mteij/healthbridge/main/docker-compose.yml | docker compose -p healthbridge -f - up -d
 ```
 
-This starts the server on port `6644` and a MongoDB that is not exposed to the network. Then:
+Starts the server on port `6644` and a MongoDB that is not reachable from outside. Put an HTTPS reverse proxy in front of it
+(the app refuses plain `http://`), then sign in from the app. **The first account becomes the owner and registration closes**, so do this right away.
 
-1. Put a reverse proxy with HTTPS in front of it (Traefik, Caddy, nginx…). The phone app refuses plain `http://`.
-2. Open the app and sign in with your server address and a **new** username and password. The first
-   account becomes the owner and registration closes. Do this straight away.
-3. Open the server's address in a browser: the landing page repeats these steps for your host.
+<details>
+<summary><b>Configuration</b></summary>
 
-Settings (environment variables on the `api` service):
+Environment variables of the `api` service:
 
 | Variable | Purpose | Default |
 |---|---|---|
 | `MONGO_URI` | MongoDB connection string | set by the compose file |
-| `HB_DATA_KEY` | Secret used to encrypt stored records. Set it before the first sync | unset (legacy key) |
-| `HB_ALLOW_REGISTRATION` | `true` to allow more than one account | closed after the first account |
-| `HB_TIMEZONE` | Timezone for daily totals and sleep dates in the MCP tools | `Europe/Amsterdam` |
+| `HB_DATA_KEY` | Secret that encrypts stored records. Set it before the first sync | unset (weak legacy key) |
+| `HB_ALLOW_REGISTRATION` | `true` to let more people create accounts | closed after the first account |
+| `HB_MAX_USERS` | Cap on accounts when registration is open | unlimited |
+| `HB_TIMEZONE` | Timezone for daily totals and sleep dates in MCP tools | `Europe/Amsterdam` |
 | `HB_LOG_LEVEL` | Log level | `INFO` |
 | `FCM_PROJECT_ID` | Only for the optional push/delete-to-device endpoints (needs a Firebase `service-account.json`) | unset |
 
-Back up the `db` volume. Without `HB_DATA_KEY` the stored records use upstream's legacy
-encryption, which is weak (all users share one key); `scripts/reencrypt.py` converts existing data
-after you set the key.
+Back up the `db` volume. Existing data from the old encryption can be converted with `scripts/reencrypt.py` after you set `HB_DATA_KEY`.
+</details>
 
-## Android app
+## Use your data
 
-Download the APK from the [latest release](../../releases/latest), or let
-[Obtainium](https://github.com/ImranR98/Obtainium) keep it updated:
-[**add to Obtainium**](obtainium://add/https://github.com/mteij/healthbridge)
-(or add `https://github.com/mteij/healthbridge` as a source manually).
-
-Needs Android 9+ and Health Connect (built in from Android 14, otherwise install it from Google
-Play). On first start follow the checklist on the Overview tab: allow reading, allow background
-reading and history, and exclude the app from battery optimisation (Samsung and other vendors
-otherwise put it to sleep after a few days).
-
-## API keys
-
-Keys are read-only and shown once. Log in, then create one:
+Create a read-only API key (shown once). Log in, then:
 
 ```sh
-curl -s -X POST https://your.server/api/v2/login \
-  -H 'Content-Type: application/json' -d '{"username":"you","password":"…"}'
+curl -s -X POST https://your.server/api/v2/login -H 'Content-Type: application/json' \
+  -d '{"username":"you","password":"…"}'
 
-curl -s -X POST https://your.server/api/v2/apikeys \
-  -H "Authorization: Bearer <token from the login response>" \
+curl -s -X POST https://your.server/api/v2/apikeys -H "Authorization: Bearer <token>" \
   -H 'Content-Type: application/json' -d '{"name":"my-agent"}'
 ```
 
-Use the returned `hb_…` key as `Authorization: Bearer hb_…`. `GET /api/v2/apikeys` lists keys and
-`DELETE /api/v2/apikeys/<id>` revokes one.
+Send it as `Authorization: Bearer hb_…`. Try `GET /api/v2/workouts?limit=5`.
 
-## MCP (AI assistants)
+### MCP
 
-Endpoint: `https://your.server/mcp` (streamable HTTP, stateless, Bearer API key).
-
-Claude Code:
+Endpoint `https://your.server/mcp` (streamable HTTP, stateless, Bearer key). With Claude Code:
 
 ```sh
-claude mcp add --transport http healthbridge https://your.server/mcp \
-  --header "Authorization: Bearer hb_…"
+claude mcp add --transport http healthbridge https://your.server/mcp --header "Authorization: Bearer hb_…"
 ```
 
-Any other client that supports remote HTTP MCP servers takes the same URL and header.
-
-| Tool | What it returns |
+| Tool | Returns |
 |---|---|
-| `get_overview` | Latest measurements, last 7 days of steps and calories, recent sleep and workouts |
-| `list_workouts` | Workouts with distance, duration, pace, heart rate, calories (`from`, `to`, `type`, `limit`) |
-| `get_workout` | One workout with heart-rate and speed samples |
-| `get_daily_totals` | Per-day totals for steps, distance, calories, floors, elevation |
+| `get_overview` | Latest measurements, 7 days of steps and calories, recent sleep and workouts |
+| `list_workouts` · `get_workout` | Workouts with distance, pace, heart rate, calories; one workout with samples |
+| `get_daily_totals` | Per-day steps, distance, calories, floors, elevation |
 | `get_sleep` | Sleep sessions with minutes asleep and per stage |
-| `get_latest_measurements` | Weight, body fat, resting heart rate, VO2 max, HRV, SpO2, height |
+| `get_latest_measurements` | Weight, body fat, resting heart rate, VO₂ max, HRV, SpO₂, height |
 
-All tools only read. Treat the key like a password: it can see all of your health data.
+All tools are read-only. Treat a key like a password: it can see all of your health data.
 
-## REST API
+<details>
+<summary><b>REST API</b></summary>
 
-`/api/v2`, authenticated with the app's login session or an API key (read-only keys: `fetch` and `workouts` only).
+Under `/api/v2`. Authenticate with the app's login session or an API key (keys are read-only: `fetch` and `workouts`).
 
 | Endpoint | |
 |---|---|
-| `POST /login`, `POST /refresh`, `DELETE /revoke` | Session handling. Logging in never rotates the phone's refresh token |
-| `POST /sync/<type>`, `DELETE /sync/<type>` | Upload or delete records (the app uses these) |
+| `POST /login` · `/refresh` · `DELETE /revoke` | Sessions. Logging in never rotates the phone's refresh token |
+| `POST /sync/<type>` · `DELETE /sync/<type>` | Upload or delete records (used by the app) |
 | `POST /fetch/<type>` | Raw records, optional `{"queries": {…}, "limit": n}` |
 | `GET /workouts?from=&to=&type=&limit=&samples=1` | Workouts with joined data |
 | `GET /workouts/<id>` | One workout with sample series |
-| `POST/GET/DELETE /apikeys` | Manage read-only keys |
-| `PUT /push/<type>`, `DELETE /delete/<type>` | Ask the phone to write or delete records (needs FCM) |
-| `GET /healthz` | Health check (no auth) |
+| `POST` · `GET` · `DELETE /apikeys` | Manage read-only keys |
+| `PUT /push/<type>` · `DELETE /delete/<type>` | Ask the phone to write or delete records (needs FCM) |
+| `GET /healthz` | Health check, no auth |
 
-Record types are the lowerCamelCase Health Connect names (`steps`, `heartRate`, `exerciseSession`,
-`sleepSession`, `vo2Max`, …). The routes of upstream's v2 API remain compatible.
+Record types are lowerCamelCase Health Connect names: `steps`, `heartRate`, `exerciseSession`, `sleepSession`, `vo2Max`, …
+Upstream HCGateway's v2 routes stay compatible.
+</details>
 
-## Development
+<details>
+<summary><b>Development</b></summary>
 
 ```sh
-api/run-tests.sh                 # server tests against a throwaway MongoDB (Docker)
-docker build -t healthbridge-api api
+api/run-tests.sh                       # server tests against a throwaway MongoDB (Docker)
+docker build -t healthbridge-api api   # server image
 ```
 
-The app lives in `app/` (Gradle, Kotlin 2.4, Compose, Health Connect `connect-client` 1.1). CI
-(`.github/workflows/android.yml`) builds and signs the APK and attaches it to every `v*` release;
-`.github/workflows/docker.yml` publishes `ghcr.io/mteij/healthbridge`. To sign with your own key
-set the repository secrets `HB_KEYSTORE_B64`, `HB_KEYSTORE_PASSWORD` and `HB_KEY_ALIAS`.
+`api/` Flask + gunicorn server · `app/` Kotlin + Compose app (Health Connect `connect-client` 1.1) · `scripts/` maintenance · `docs/` assets.
 
-Layout: `api/` server · `app/` Android app · `scripts/` maintenance scripts · `doc/` upstream API reference.
+CI builds and signs the APK and attaches it to every `v*` release (`.github/workflows/android.yml`) and publishes
+`ghcr.io/mteij/healthbridge` (`docker.yml`). To sign with your own key set the secrets `HB_KEYSTORE_B64`, `HB_KEYSTORE_PASSWORD`, `HB_KEY_ALIAS`.
+</details>
 
-## Licence
+## Credits
 
-MIT, as upstream. See `LICENSE`.
+Hard fork of [HCGateway](https://github.com/ShuchirJ/HCGateway) by Shuchir Jain. MIT licensed.

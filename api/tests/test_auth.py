@@ -51,3 +51,10 @@ def test_api_key_is_read_only(client, session):
     assert listed[0]["name"] == "openclaw" and "key" not in listed[0]
     assert client.delete(f"/api/v2/apikeys/{listed[0]['id']}", headers=auth(session["token"])).status_code == 200
     assert client.get("/api/v2/workouts", headers=auth(key)).status_code == 403
+
+
+def test_user_cap_limits_open_registration(client, monkeypatch, session):
+    monkeypatch.setenv("HB_ALLOW_REGISTRATION", "true")
+    monkeypatch.setenv("HB_MAX_USERS", "2")
+    assert client.post("/api/v2/login", json={"username": "b", "password": "x"}).status_code == 201
+    assert client.post("/api/v2/login", json={"username": "c", "password": "x"}).status_code == 403
