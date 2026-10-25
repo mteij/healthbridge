@@ -16,8 +16,6 @@ import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.HydrationRecord
-import androidx.health.connect.client.records.InstantaneousRecord
-import androidx.health.connect.client.records.IntervalRecord
 import androidx.health.connect.client.records.LeanBodyMassRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.PowerRecord
@@ -75,16 +73,23 @@ class Spec<T : Record>(
     suspend fun newChangesToken(client: HealthConnectClient): String =
         client.getChangesToken(ChangesTokenRequest(setOf(kClass)))
 
+    // IntervalRecord / InstantaneousRecord are internal to the library, so read the times reflectively.
+    private fun getter(name: String) = kClass.java.methods.firstOrNull { it.name == name && it.parameterCount == 0 }
+    private val startGetter by lazy { getter("getStartTime") }
+    private val endGetter by lazy { getter("getEndTime") }
+    private val timeGetter by lazy { getter("getTime") }
+
     @Suppress("UNCHECKED_CAST")
     fun encode(record: Record): JsonObject = buildJsonObject {
         val r = record as T
         put("metadata", metadata(r))
-        when (r) {
-            is IntervalRecord -> {
-                put("startTime", r.startTime.toString())
-                put("endTime", r.endTime.toString())
-            }
-            is InstantaneousRecord -> put("time", r.time.toString())
+        val start = startGetter
+        val end = endGetter
+        if (start != null && end != null) {
+            put("startTime", (start.invoke(r) as Instant).toString())
+            put("endTime", (end.invoke(r) as Instant).toString())
+        } else {
+            put("time", (timeGetter!!.invoke(r) as Instant).toString())
         }
         fields(r)
     }
