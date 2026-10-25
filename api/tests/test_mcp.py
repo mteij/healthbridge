@@ -77,4 +77,12 @@ def test_tool_errors_are_reported_not_raised(client, session):
 
 def test_landing_page(client):
     res = client.get("/")
-    assert res.status_code == 200 and b"Healthbridge" in res.data and b"/mcp" in res.data
+    assert res.status_code == 200 and b"Healthbridge" in res.data and b"github.com/mteij/healthbridge" in res.data
+
+
+def test_status_endpoint_reports_signups(client, session, monkeypatch):
+    monkeypatch.setenv("HB_ALLOW_REGISTRATION", "true")
+    monkeypatch.setenv("HB_MAX_USERS", "3")
+    monkeypatch.setenv("HB_STALE_DAYS", "30")
+    status = client.get("/status").get_json()
+    assert status["registration"] is True and status["spots_left"] == 2 and status["inactive_days"] == 30

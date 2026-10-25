@@ -55,6 +55,15 @@ def _new_session(user_id, keep_refresh=None):
     return {"token": token, "refresh": refresh, "expiry": expiry.isoformat()}
 
 
+def _touch(user_id):
+    """Record activity, at most once an hour per account."""
+    now = utcnow()
+    db.users().update_one(
+        {"_id": user_id, "$or": [{"lastSeen": {"$exists": False}}, {"lastSeen": {"$lt": now - datetime.timedelta(hours=1)}}]},
+        {"$set": {"lastSeen": now}},
+    )
+
+
 def _bearer():
     header = request.headers.get("Authorization", "")
     parts = header.split(" ", 1)
@@ -80,6 +89,7 @@ def authenticate():
         if request.endpoint not in READ_ONLY_ENDPOINTS:
             return jsonify({"error": "this API key is read-only"}), 403
         db.apikeys().update_one({"_id": key["_id"]}, {"$set": {"lastUsed": utcnow()}})
+        _touch(key["user"])
         g.user = key["user"]
         g.scope = "read"
         g.auth_kind = "apikey"
@@ -90,19 +100,28 @@ def authenticate():
         return jsonify({"error": "invalid token"}), 403
     if utcnow() > user["expiry"]:
         return jsonify({"error": "token expired. Use /api/v2/login to reauthenticate."}), 403
+    _touch(user["_id"])
     g.user = user["_id"]
     g.auth_kind = "session"
     return None
 
 
-def _registration_allowed():
+def registration_state():
+    """{"open": bool, "spots_left": int | None}; spots_left is None when there is no cap."""
     count = db.users().count_documents({})
     if count == 0:
-        return True
+        return {"open": True, "spots_left": None}
     if os.environ.get("HB_ALLOW_REGISTRATION", "").lower() not in ("1", "true", "yes"):
-        return False
+        return {"open": False, "spots_left": None}
     limit = os.environ.get("HB_MAX_USERS")
-    return not (limit and limit.isdigit() and count >= int(limit))
+    if limit and limit.isdigit():
+        left = max(0, int(limit) - count)
+        return {"open": left > 0, "spots_left": left}
+    return {"open": True, "spots_left": None}
+
+
+def _registration_allowed():
+    return registration_state()["open"]
 
 
 @v2.post("/login")
@@ -121,7 +140,7 @@ def login():
             _record_failure(username)
             return jsonify({"error": "registration is disabled"}), 403
         user_id = str(ObjectId())
-        db.users().insert_one({"_id": user_id, "username": username, "password": ph.hash(password)})
+        db.users().insert_one({"_id": user_id, "username": username, "password": ph.hash(password), "lastSeen": utcnow()})
         log.info("registered user %s", username)
         session = _new_session(user_id)
         if fcm_token:
@@ -134,6 +153,7 @@ def login():
         _record_failure(username)
         return jsonify({"error": "invalid password"}), 403
     _failures.pop(username, None)
+    _touch(user["_id"])
 
     if fcm_token:
         db.users().update_one({"_id": user["_id"]}, {"$set": {"fcmToken": fcm_token}})
@@ -160,6 +180,7 @@ def refresh():
     user = db.users().find_one({"refresh": refresh_token})
     if not user:
         return jsonify({"error": "invalid refresh token"}), 403
+    _touch(user["_id"])
     return jsonify(_new_session(user["_id"], keep_refresh=refresh_token)), 200
 
 

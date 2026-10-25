@@ -3,76 +3,96 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
+<meta name="description" content="Healthbridge syncs your Android Health Connect data to a server you control, with an API and an MCP server.">
 <title>Healthbridge</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Crect width='108' height='108' rx='24' fill='%23022236'/%3E%3Cpath d='M24 70C24 48 40 36 54 36 68 36 84 48 84 70' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M20 62h20l7-14 8 28 7-20 5 6h21' fill='none' stroke='%234FD1C5' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
-  :root { --bg:#f7fafb; --fg:#10222c; --muted:#5b6f7a; --card:#fff; --line:#dbe5ea; --accent:#0b6e8a; --code:#eef4f6; }
+  :root {
+    --bg: #f6f9fb; --fg: #0f2530; --muted: #5d7380; --line: #dfe8ed; --card: #ffffff;
+    --accent: #0b6e8a; --accent-fg: #ffffff; --glow: rgba(11,110,138,.10); --ok: #1a9e5c;
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#041824; --fg:#e6f1f5; --muted:#8aa3af; --card:#0a2433; --line:#17394b; --accent:#4fd1c5; --code:#0d2c3e; }
+    :root {
+      --bg: #041824; --fg: #e8f2f6; --muted: #86a1ae; --line: #16384a; --card: #082b3d;
+      --accent: #4fd1c5; --accent-fg: #03222c; --glow: rgba(79,209,197,.10); --ok: #3ddc97;
+    }
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 720px; margin: 0 auto; padding: 48px 20px 64px; }
-  h1 { font-size: 2rem; margin: 0 0 4px; }
-  h2 { font-size: 1.1rem; margin: 32px 0 8px; }
-  p { margin: 8px 0; }
-  .tag { color: var(--muted); margin: 0 0 24px; }
-  .status { display:inline-flex; align-items:center; gap:8px; padding:4px 12px; border:1px solid var(--line); border-radius:999px; background:var(--card); font-size:.9rem; }
-  .dot { width:9px; height:9px; border-radius:50%; background:#2da44e; }
-  .dot.bad { background:#d1242f; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:4px 18px 14px; margin-top:16px; }
-  pre { background:var(--code); padding:12px; border-radius:8px; overflow-x:auto; font-size:.85rem; margin:8px 0; }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.9em; }
-  a { color: var(--accent); }
-  footer { margin-top:40px; color:var(--muted); font-size:.85rem; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    background: radial-gradient(900px 420px at 50% -120px, var(--glow), transparent), var(--bg);
+    color: var(--fg); font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { flex: 1; width: 100%; max-width: 640px; margin: 0 auto; padding: 72px 24px 32px; text-align: center; }
+  .logo { width: 72px; height: 72px; border-radius: 18px; }
+  h1 { font-size: clamp(2rem, 6vw, 2.75rem); line-height: 1.15; letter-spacing: -.02em; margin: 24px 0 12px; }
+  .lead { color: var(--muted); font-size: 1.1rem; margin: 0 auto 32px; max-width: 30em; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    display: inline-flex; align-items: center; padding: 12px 22px; border-radius: 12px; font-weight: 600;
+    text-decoration: none; border: 1px solid var(--line); color: var(--fg); background: var(--card);
+    transition: transform .08s ease, border-color .15s ease;
+  }
+  .btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+  .more { margin-top: 20px; font-size: .95rem; }
+  .more a { color: var(--accent); text-decoration: none; font-weight: 500; }
+  .more a:hover { text-decoration: underline; }
+  .card {
+    margin: 56px auto 0; padding: 20px 22px; max-width: 460px; text-align: left;
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 6px 0; }
+  .row + .row { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 6px; }
+  .label { color: var(--muted); font-size: .9rem; }
+  .value { font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 20%, transparent); }
+  .dot.bad { background: #d1242f; }
+  .note { margin: 14px 4px 0; color: var(--muted); font-size: .85rem; text-align: center; }
+  footer { padding: 24px; text-align: center; color: var(--muted); font-size: .85rem; }
+  footer a { color: inherit; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Healthbridge</h1>
-  <p class="tag">Your Health Connect data, on your own server.</p>
-  <span class="status"><span id="dot" class="dot"></span><span id="state">checking…</span></span>
+  <svg class="logo" viewBox="0 0 108 108" role="img" aria-label="Healthbridge">
+    <rect width="108" height="108" rx="24" fill="#022236"/>
+    <path d="M24 70C24 48 40 36 54 36 68 36 84 48 84 70" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+    <path d="M20 62h20l7-14 8 28 7-20 5 6h21" fill="none" stroke="#4FD1C5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
 
-  <p>This is a private API server. There is nothing to see here without the Android app or an API key.</p>
+  <h1>Your health data,<br>on your own server.</h1>
+  <p class="lead">Healthbridge syncs Android Health Connect to a server you control, with an API and an MCP server for your scripts and AI assistants.</p>
 
-  <div class="card">
-    <h2>1. Install the app</h2>
-    <p>Download the latest APK from <a href="https://github.com/mteij/healthbridge/releases/latest">GitHub releases</a>,
-       or add it to <a href="obtainium://add/https://github.com/mteij/healthbridge">Obtainium</a> to get updates automatically
-       (repository: <code>https://github.com/mteij/healthbridge</code>).</p>
-    <p>Sign in with this server's address: <code id="origin"></code></p>
+  <div class="actions">
+    <a class="btn primary" href="https://github.com/mteij/healthbridge/releases/latest">Download the app</a>
+    <a class="btn" href="obtainium://add/https://github.com/mteij/healthbridge">Add to Obtainium</a>
   </div>
+  <p class="more"><a href="https://github.com/mteij/healthbridge#readme">Setup instructions and docs on GitHub →</a></p>
 
-  <div class="card">
-    <h2>2. Create an API key for scripts and AI tools</h2>
-    <p>Keys are read-only. Log in once, then create one:</p>
-<pre>curl -s -X POST <span class="o"></span>/api/v2/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"you","password":"…"}'
-
-curl -s -X POST <span class="o"></span>/api/v2/apikeys \
-  -H "Authorization: Bearer &lt;token from login&gt;" \
-  -H 'Content-Type: application/json' -d '{"name":"my-agent"}'</pre>
-    <p>The key (<code>hb_…</code>) is shown once. Use it as <code>Authorization: Bearer hb_…</code>.</p>
+  <div class="card" aria-live="polite">
+    <div class="row"><span class="label">Server</span><span class="value"><span id="dot" class="dot"></span><span id="state">Checking…</span></span></div>
+    <div class="row"><span class="label">Sign-ups</span><span class="value" id="signups">…</span></div>
+    <div class="row"><span class="label">Server address</span><span class="value" id="origin"></span></div>
   </div>
-
-  <div class="card">
-    <h2>3. Use the data</h2>
-<pre>GET  <span class="o"></span>/api/v2/workouts?limit=5
-POST <span class="o"></span>/api/v2/fetch/steps
-POST <span class="o"></span>/mcp   (MCP server for AI assistants)</pre>
-    <p>MCP clients: add <code><span class="o"></span>/mcp</code> as a remote HTTP server and send the key as a Bearer token.
-       Tools: <code>get_overview</code>, <code>list_workouts</code>, <code>get_workout</code>,
-       <code>get_daily_totals</code>, <code>get_sleep</code>, <code>get_latest_measurements</code>.</p>
-  </div>
-
-  <footer>Healthbridge {{ version }} · <a href="https://github.com/mteij/healthbridge">source</a> · fork of HCGateway</footer>
+  <p class="note" id="note">Best-effort public instance, no uptime promises.</p>
 </main>
+<footer>Healthbridge <span id="version">{{ version }}</span> · <a href="https://github.com/mteij/healthbridge">GitHub</a> · fork of HCGateway</footer>
 <script>
-  document.getElementById("origin").textContent = location.origin;
-  document.querySelectorAll(".o").forEach(function (e) { e.textContent = location.origin; });
-  fetch("/healthz").then(function (r) { if (!r.ok) throw 0; document.getElementById("state").textContent = "online"; })
-    .catch(function () { document.getElementById("dot").className = "dot bad"; document.getElementById("state").textContent = "unreachable"; });
+  var $ = function (id) { return document.getElementById(id); };
+  $("origin").textContent = location.host;
+  fetch("/status").then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (s) {
+    $("dot").className = "dot ok"; $("state").textContent = "Online";
+    $("signups").textContent = !s.registration ? "Closed"
+      : s.spots_left == null ? "Open" : "Open · " + s.spots_left + (s.spots_left === 1 ? " spot left" : " spots left");
+    var note = "Best-effort public instance, no uptime promises.";
+    if (s.inactive_days) note += " Accounts inactive for " + s.inactive_days + " days are deleted.";
+    $("note").textContent = note;
+  }).catch(function () {
+    $("dot").className = "dot bad"; $("state").textContent = "Unreachable"; $("signups").textContent = "–";
+  });
 </script>
 </body>
 </html>

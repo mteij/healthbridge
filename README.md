@@ -39,9 +39,11 @@ syncs them off your phone reliably and puts them back together:
 
 ### Public instance
 
-**https://healthbridge.mteij.nl** is a free instance run by the maintainer. **Best effort: no uptime, retention or support
-promises**, and the number of accounts is capped. Your records are stored on the maintainer's server and could technically be read by them,
-so for anything sensitive, [self-host](#self-host).
+**https://healthbridge.mteij.nl** is a free instance run by the maintainer. **Best effort: no uptime, retention or support promises.**
+
+- 🎟️ **Sign-ups are only open to the first 20 users.** When the spots are gone, [self-host](#self-host).
+- 🧹 **Accounts that have been inactive for 30 days are deleted**, together with all their data.
+- 🔒 Your records are stored on the maintainer's server and could technically be read by them, so for anything sensitive, self-host.
 
 ## Self-host
 
@@ -63,6 +65,9 @@ Environment variables of the `api` service:
 | `HB_DATA_KEY` | Secret that encrypts stored records. Set it before the first sync | unset (weak legacy key) |
 | `HB_ALLOW_REGISTRATION` | `true` to let more people create accounts | closed after the first account |
 | `HB_MAX_USERS` | Cap on accounts when registration is open | unlimited |
+| `HB_STALE_DAYS` | Delete accounts, and all their data, that were inactive for this many days (any sync, login or API key use counts as activity). `0` or unset disables it | disabled |
+| `HB_STALE_EXEMPT` | Comma separated usernames that are never deleted | none |
+| `HB_STALE_DRY_RUN` | `true` to only log what would be deleted | `false` |
 | `HB_TIMEZONE` | Timezone for daily totals and sleep dates in MCP tools | `Europe/Amsterdam` |
 | `HB_LOG_LEVEL` | Log level | `INFO` |
 | `FCM_PROJECT_ID` | Only for the optional push/delete-to-device endpoints (needs a Firebase `service-account.json`) | unset |

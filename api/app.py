@@ -21,9 +21,24 @@ def create_app():
     from mcp_server import mcp
     app.register_blueprint(mcp)
 
+    import cleanup
+    cleanup.start_background_job()
+
     @app.get("/")
     def landing():
         return render_template("index.html", version=os.environ.get("HB_VERSION", "dev")), 200
+
+    @app.get("/status")
+    def status():
+        import db
+        from apiVersions.v2.auth import registration_state
+        state = registration_state()
+        return jsonify({
+            "version": os.environ.get("HB_VERSION", "dev"),
+            "registration": state["open"],
+            "spots_left": state["spots_left"],
+            "inactive_days": int(os.environ["HB_STALE_DAYS"]) if os.environ.get("HB_STALE_DAYS", "").isdigit() else None,
+        }), 200
 
     @app.get("/healthz")
     def healthz():
