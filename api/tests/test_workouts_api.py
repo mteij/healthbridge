@@ -54,3 +54,25 @@ def test_dashboard_endpoints_for_the_app(client, session):
 
     detail = client.get("/api/v2/workouts/w1?points=10", headers=auth(key)).get_json()
     assert len(detail["samples"]["heart_rate"]) == 10
+
+
+def test_week_minutes_and_series_endpoints(client, session):
+    import datetime
+    t = session["token"]
+    today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    samples = [{"time": f"{today}T10:{m:02d}:00Z", "beatsPerMinute": 150} for m in range(30)]
+    client.post("/api/v2/sync/exerciseSession", headers=auth(t), json={"data": [
+        {"metadata": {"id": "w1", "dataOrigin": "p"}, "startTime": f"{today}T10:00:00Z", "endTime": f"{today}T10:30:00Z", "exerciseType": 56}]})
+    client.post("/api/v2/sync/heartRate", headers=auth(t), json={"data": [
+        {"metadata": {"id": "h1", "dataOrigin": "p"}, "startTime": f"{today}T10:00:00Z", "endTime": f"{today}T10:30:00Z", "samples": samples}]})
+    client.post("/api/v2/sync/weight", headers=auth(t), json={"data": [
+        {"metadata": {"id": "wt"}, "time": f"{today}T07:00:00Z", "weight": {"inKilograms": 78.4}}]})
+    key = client.post("/api/v2/apikeys", json={"name": "k"}, headers=auth(t)).get_json()["key"]
+    data = client.get("/api/v2/overview?tz=UTC&max_hr=190", headers=auth(key)).get_json()
+    # 150/190 = 79% -> vigorous, counts double: 29 min of samples (last has no successor) -> 58
+    assert data["week"] == {"workouts": 1, "intensity_min": 58.0}
+    assert data["recent_workouts"][0]["zones_s"][2] > 0
+    assert client.get("/api/v2/overview?tz=UTC", headers=auth(key)).get_json()["week"]["intensity_min"] is None
+    points = client.get(f"/api/v2/series?name=weight&from={today}&to={today}&tz=UTC", headers=auth(key)).get_json()
+    assert points == [{"date": today, "value": 78.4, "unit": "kg"}]
+    assert client.get("/api/v2/series?name=nope&from=2026-01-01&to=2026-01-02", headers=auth(key)).status_code == 400

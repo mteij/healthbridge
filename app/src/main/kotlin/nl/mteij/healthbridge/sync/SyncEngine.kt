@@ -22,6 +22,11 @@ import java.time.Instant
 /** How a run ended; decides whether WorkManager retries it. */
 enum class Outcome { SUCCESS, RETRY, FAILED }
 
+/** Where a run is: the data type it is on, how many types there are, and records sent so far. */
+data class Progress(val label: String = "", val index: Int = 0, val total: Int = 0, val records: Int = 0) {
+    val fraction: Float? get() = if (total > 0) index.toFloat() / total else null
+}
+
 /**
  * Pushes Health Connect data to the server.
  *
@@ -36,17 +41,23 @@ class SyncEngine(
     private val log: SyncLog,
 ) {
     private val mutex = Mutex()
-    private val _status = MutableStateFlow<String?>(null)
+    private val _progress = MutableStateFlow<Progress?>(null)
     private var historyGranted = false
+    private var recordsSent = 0
 
-    /** Human readable progress while a run is active, null when idle. */
-    val status: StateFlow<String?> = _status
+    /** Progress while a run is active (or queued), null when idle. */
+    val progress: StateFlow<Progress?> = _progress
+
+    /** Shows the progress bar right away, before the background task has actually started. */
+    fun markQueued() {
+        if (_progress.value == null) _progress.value = Progress()
+    }
 
     suspend fun run(trigger: String, full: Boolean = false): Outcome = mutex.withLock {
         try {
             runLocked(trigger, full)
         } finally {
-            _status.value = null
+            _progress.value = null
         }
     }
 
@@ -81,13 +92,18 @@ class SyncEngine(
             return Outcome.FAILED
         }
 
+        // A full re-import is remembered per type, so a killed or retried run resumes where it stopped.
+        if (full) prefs.pendingFull = specs.map { it.key }.toSet()
+        recordsSent = 0
+
         var uploaded = 0
         var deleted = 0
         var failures = 0
         for ((index, spec) in specs.withIndex()) {
-            _status.value = "${spec.label} (${index + 1}/${specs.size})"
+            _progress.value = Progress(spec.label, index, specs.size, recordsSent)
             try {
-                val result = syncType(client, spec, full)
+                val result = syncType(client, spec, spec.key in prefs.pendingFull)
+                prefs.pendingFull = prefs.pendingFull - spec.key
                 uploaded += result.first
                 deleted += result.second
             } catch (e: IOException) {
@@ -136,7 +152,7 @@ class SyncEngine(
             }
             val upserts = response.changes.filterIsInstance<UpsertionChange>().map { spec.encode(it.record) }
             val deletions = response.changes.filterIsInstance<DeletionChange>().map { it.recordId }
-            batches(upserts).forEach { api.upload(spec.key, it) }
+            batches(upserts).forEach { api.upload(spec.key, it); recordsSent += it.size; bump(spec) }
             deletions.chunked(MAX_BATCH_RECORDS).forEach { api.delete(spec.key, it) }
             uploaded += upserts.size
             deleted += deletions.size
@@ -163,13 +179,17 @@ class SyncEngine(
         var uploaded = 0
         do {
             val page = spec.read(client, from, now, pageToken)
-            batches(page.records.map { spec.encode(it) }).forEach { api.upload(spec.key, it) }
+            batches(page.records.map { spec.encode(it) }).forEach { api.upload(spec.key, it); recordsSent += it.size; bump(spec) }
             uploaded += page.records.size
             pageToken = page.nextPageToken
         } while (pageToken != null)
         prefs.setChangesToken(spec.key, changesToken)
         log.info("Initial import: $uploaded records from the last $days days", spec.key)
         return uploaded
+    }
+
+    private fun bump(spec: Spec<out androidx.health.connect.client.records.Record>) {
+        _progress.value = _progress.value?.copy(records = recordsSent)
     }
 
     /** Fewer, larger requests: up to [MAX_BATCH_RECORDS] records or roughly [MAX_BATCH_CHARS] of JSON each. */

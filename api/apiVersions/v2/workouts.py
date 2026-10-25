@@ -65,13 +65,15 @@ def workouts():
     cipher = data_cipher(user)
     sessions = decrypt_docs(load_sessions(g.user, query, limit), cipher)
 
+    from apiVersions.v2.overview import max_hr_arg
+    max_hr = max_hr_arg()
     wanted = args.get("type")
     include_samples = args.get("samples") in ("1", "true")
     out = []
     for session in sessions:
         if wanted and type_name(session["data"].get("exerciseType")) != wanted.lower():
             continue
-        out.append(build_workout(session, series_for(g.user, session, cipher), include_samples))
+        out.append(build_workout(session, series_for(g.user, session, cipher), include_samples, max_hr))
     return jsonify(out), 200
 
 
@@ -83,7 +85,8 @@ def workout_detail(workout_id):
     if not sessions:
         return jsonify({"error": "workout not found"}), 404
     session = sessions[0]
-    workout = build_workout(session, series_for(g.user, session, cipher), True)
+    from apiVersions.v2.overview import max_hr_arg
+    workout = build_workout(session, series_for(g.user, session, cipher), True, max_hr_arg())
     try:
         points = int(request.args.get("points", 0))
     except ValueError:

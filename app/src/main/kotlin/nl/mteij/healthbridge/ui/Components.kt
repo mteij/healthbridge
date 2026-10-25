@@ -14,7 +14,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -245,5 +250,113 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, color:
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.titleLarge, color = color)
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Layout building blocks
+
+/** Opaque header that stays at the top while the list scrolls; it clears the status bar once stuck. */
+@Composable
+fun StickyHeader(stuck: Boolean, modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    androidx.compose.material3.Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.background,
+        shadowElevation = if (stuck) 3.dp else 0.dp,
+    ) {
+        Column(
+            (if (stuck) Modifier.statusBarsPadding() else Modifier).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            content = content,
+        )
+    }
+}
+
+/** True once the item at [index] has reached the top of the list. */
+@Composable
+fun rememberStuck(state: androidx.compose.foundation.lazy.LazyListState, index: Int): Boolean {
+    val stuck by remember(state, index) { androidx.compose.runtime.derivedStateOf { state.firstVisibleItemIndex >= index } }
+    return stuck
+}
+
+/** Pill shaped search field with a search icon and a clear button. */
+@Composable
+fun SearchField(value: String, onValueChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+    androidx.compose.material3.TextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text(placeholder) },
+        leadingIcon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, null) },
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                androidx.compose.material3.IconButton(onClick = { onValueChange("") }) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Close, null)
+                }
+            }
+        },
+        shape = RoundedCornerShape(28.dp),
+        colors = androidx.compose.material3.TextFieldDefaults.colors(
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    )
+}
+
+data class NavTab(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+
+/** Floating pill navigation: only the selected tab shows its label. */
+@Composable
+fun FloatingNavBar(tabs: List<NavTab>, selected: String?, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    androidx.compose.material3.Surface(
+        modifier = modifier
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        shape = RoundedCornerShape(32.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+        tonalElevation = 6.dp,
+        shadowElevation = 10.dp,
+    ) {
+        Row(Modifier.padding(6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            tabs.forEach { tab ->
+                val active = tab.route == selected
+                val background by androidx.compose.animation.animateColorAsState(
+                    if (active) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, label = "tab",
+                )
+                Row(
+                    Modifier
+                        .background(background, RoundedCornerShape(26.dp))
+                        .clickable { onSelect(tab.route) }
+                        .padding(horizontal = if (active) 18.dp else 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.Icon(
+                        tab.icon, tab.label,
+                        tint = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    androidx.compose.animation.AnimatedVisibility(active) {
+                        Text(
+                            tab.label, Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun Modifier.navigationBarsPadding(): Modifier = this.navigationBarsPadding()
+private fun Modifier.androidx_clickable(onClick: () -> Unit): Modifier = this.clickable(onClick = onClick)
+
+/** Round icon badge used for workouts and sections. */
+@Composable
+fun IconBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier = Modifier, size: Dp = 48.dp) {
+    Box(modifier.size(size).background(color.copy(alpha = 0.16f), androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+        androidx.compose.material3.Icon(icon, null, tint = color, modifier = Modifier.size(size * 0.5f))
     }
 }

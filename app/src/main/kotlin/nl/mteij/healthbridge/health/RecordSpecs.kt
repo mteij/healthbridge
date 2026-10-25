@@ -54,6 +54,8 @@ class Spec<T : Record>(
     val kClass: KClass<T>,
     /** Display name for the settings screen. */
     val label: String,
+    /** Category in the settings screen: activity, heart, sleep, body or vitals. */
+    val group: String,
     private val fields: JsonObjectBuilder.(T) -> Unit,
 ) {
     val readPermission: String get() = HealthPermission.getReadPermission(kClass)
@@ -118,8 +120,9 @@ class Spec<T : Record>(
 private inline fun <reified T : Record> spec(
     key: String,
     label: String,
+    group: String,
     noinline fields: JsonObjectBuilder.(T) -> Unit,
-) = Spec(key, T::class, label, fields)
+) = Spec(key, T::class, label, group, fields)
 
 
 private fun JsonObjectBuilder.length(name: String, l: androidx.health.connect.client.units.Length) =
@@ -139,7 +142,7 @@ private fun JsonObjectBuilder.power(name: String, p: androidx.health.connect.cli
 
 object RecordSpecs {
     val all: List<Spec<out Record>> = listOf(
-        spec<ExerciseSessionRecord>("exerciseSession", "Workouts") { r ->
+        spec<ExerciseSessionRecord>("exerciseSession", "Workouts", "activity") { r ->
             put("exerciseType", r.exerciseType)
             r.title?.let { put("title", it) }
             r.notes?.let { put("notes", it) }
@@ -163,7 +166,7 @@ object RecordSpecs {
                 }
             })
         },
-        spec<HeartRateRecord>("heartRate", "Heart rate") { r ->
+        spec<HeartRateRecord>("heartRate", "Heart rate", "heart") { r ->
             put("samples", buildJsonArray {
                 r.samples.forEach { s ->
                     add(buildJsonObject {
@@ -173,8 +176,8 @@ object RecordSpecs {
                 }
             })
         },
-        spec<DistanceRecord>("distance", "Distance") { r -> length("distance", r.distance) },
-        spec<SpeedRecord>("speed", "Speed") { r ->
+        spec<DistanceRecord>("distance", "Distance", "activity") { r -> length("distance", r.distance) },
+        spec<SpeedRecord>("speed", "Speed", "activity") { r ->
             put("samples", buildJsonArray {
                 r.samples.forEach { s ->
                     add(buildJsonObject {
@@ -184,11 +187,11 @@ object RecordSpecs {
                 }
             })
         },
-        spec<StepsRecord>("steps", "Steps") { r -> put("count", r.count) },
-        spec<ActiveCaloriesBurnedRecord>("activeCaloriesBurned", "Active calories") { r -> energy("energy", r.energy) },
-        spec<TotalCaloriesBurnedRecord>("totalCaloriesBurned", "Total calories") { r -> energy("energy", r.energy) },
-        spec<ElevationGainedRecord>("elevationGained", "Elevation gained") { r -> length("elevation", r.elevation) },
-        spec<SleepSessionRecord>("sleepSession", "Sleep") { r ->
+        spec<StepsRecord>("steps", "Steps", "activity") { r -> put("count", r.count) },
+        spec<ActiveCaloriesBurnedRecord>("activeCaloriesBurned", "Active calories", "activity") { r -> energy("energy", r.energy) },
+        spec<TotalCaloriesBurnedRecord>("totalCaloriesBurned", "Total calories", "activity") { r -> energy("energy", r.energy) },
+        spec<ElevationGainedRecord>("elevationGained", "Elevation gained", "activity") { r -> length("elevation", r.elevation) },
+        spec<SleepSessionRecord>("sleepSession", "Sleep", "sleep") { r ->
             r.title?.let { put("title", it) }
             r.notes?.let { put("notes", it) }
             put("stages", buildJsonArray {
@@ -201,36 +204,36 @@ object RecordSpecs {
                 }
             })
         },
-        spec<WeightRecord>("weight", "Weight") { r -> mass("weight", r.weight) },
-        spec<HeightRecord>("height", "Height") { r -> length("height", r.height) },
-        spec<LeanBodyMassRecord>("leanBodyMass", "Lean body mass") { r -> mass("mass", r.mass) },
-        spec<BodyFatRecord>("bodyFat", "Body fat") { r -> percentage("percentage", r.percentage) },
-        spec<RestingHeartRateRecord>("restingHeartRate", "Resting heart rate") { r ->
+        spec<WeightRecord>("weight", "Weight", "body") { r -> mass("weight", r.weight) },
+        spec<HeightRecord>("height", "Height", "body") { r -> length("height", r.height) },
+        spec<LeanBodyMassRecord>("leanBodyMass", "Lean body mass", "body") { r -> mass("mass", r.mass) },
+        spec<BodyFatRecord>("bodyFat", "Body fat", "body") { r -> percentage("percentage", r.percentage) },
+        spec<RestingHeartRateRecord>("restingHeartRate", "Resting heart rate", "heart") { r ->
             put("beatsPerMinute", r.beatsPerMinute)
         },
-        spec<HeartRateVariabilityRmssdRecord>("heartRateVariabilityRmssd", "Heart rate variability") { r ->
+        spec<HeartRateVariabilityRmssdRecord>("heartRateVariabilityRmssd", "Heart rate variability", "heart") { r ->
             put("heartRateVariabilityMillis", r.heartRateVariabilityMillis)
         },
-        spec<Vo2MaxRecord>("vo2Max", "VO2 max") { r ->
+        spec<Vo2MaxRecord>("vo2Max", "VO2 max", "heart") { r ->
             put("vo2MillilitersPerMinuteKilogram", r.vo2MillilitersPerMinuteKilogram)
             put("measurementMethod", r.measurementMethod)
         },
-        spec<OxygenSaturationRecord>("oxygenSaturation", "Oxygen saturation") { r -> percentage("percentage", r.percentage) },
-        spec<RespiratoryRateRecord>("respiratoryRate", "Respiratory rate") { r -> put("rate", r.rate) },
-        spec<BloodPressureRecord>("bloodPressure", "Blood pressure") { r ->
+        spec<OxygenSaturationRecord>("oxygenSaturation", "Oxygen saturation", "heart") { r -> percentage("percentage", r.percentage) },
+        spec<RespiratoryRateRecord>("respiratoryRate", "Respiratory rate", "heart") { r -> put("rate", r.rate) },
+        spec<BloodPressureRecord>("bloodPressure", "Blood pressure", "vitals") { r ->
             put("systolic", buildJsonObject { put("inMillimetersOfMercury", r.systolic.inMillimetersOfMercury) })
             put("diastolic", buildJsonObject { put("inMillimetersOfMercury", r.diastolic.inMillimetersOfMercury) })
         },
-        spec<BloodGlucoseRecord>("bloodGlucose", "Blood glucose") { r ->
+        spec<BloodGlucoseRecord>("bloodGlucose", "Blood glucose", "vitals") { r ->
             put("level", buildJsonObject { put("inMillimolesPerLiter", r.level.inMillimolesPerLiter) })
         },
-        spec<BodyTemperatureRecord>("bodyTemperature", "Body temperature") { r ->
+        spec<BodyTemperatureRecord>("bodyTemperature", "Body temperature", "body") { r ->
             put("temperature", buildJsonObject { put("inCelsius", r.temperature.inCelsius) })
         },
-        spec<BasalMetabolicRateRecord>("basalMetabolicRate", "Basal metabolic rate") { r ->
+        spec<BasalMetabolicRateRecord>("basalMetabolicRate", "Basal metabolic rate", "body") { r ->
             put("basalMetabolicRate", buildJsonObject { put("inKilocaloriesPerDay", r.basalMetabolicRate.inKilocaloriesPerDay) })
         },
-        spec<PowerRecord>("power", "Power") { r ->
+        spec<PowerRecord>("power", "Power", "activity") { r ->
             put("samples", buildJsonArray {
                 r.samples.forEach { s ->
                     add(buildJsonObject {
@@ -240,7 +243,7 @@ object RecordSpecs {
                 }
             })
         },
-        spec<StepsCadenceRecord>("stepsCadence", "Steps cadence") { r ->
+        spec<StepsCadenceRecord>("stepsCadence", "Steps cadence", "activity") { r ->
             put("samples", buildJsonArray {
                 r.samples.forEach { s ->
                     add(buildJsonObject {
@@ -250,8 +253,8 @@ object RecordSpecs {
                 }
             })
         },
-        spec<FloorsClimbedRecord>("floorsClimbed", "Floors climbed") { r -> put("floors", r.floors) },
-        spec<HydrationRecord>("hydration", "Hydration") { r ->
+        spec<FloorsClimbedRecord>("floorsClimbed", "Floors climbed", "activity") { r -> put("floors", r.floors) },
+        spec<HydrationRecord>("hydration", "Hydration", "vitals") { r ->
             put("volume", buildJsonObject { put("inLiters", r.volume.inLiters) })
         },
     )

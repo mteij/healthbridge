@@ -124,7 +124,64 @@ def _samples(records, key, w_start, w_end, preferred_app, value_of):
     return out
 
 
-def build_workout(session, series, include_samples=False):
+# ACSM (10th ed.) intensity classes as a share of maximal heart rate:
+# light < 64 %, moderate 64-76 %, vigorous 77-95 %, near maximal >= 96 %.
+ZONE_LIMITS = (0.64, 0.77, 0.96)
+MAX_SAMPLE_GAP_S = 120
+
+
+def zone_seconds(hr_points, max_hr):
+    """Seconds in [light, moderate, vigorous, peak]. Each sample counts until the next one, at most 2 min."""
+    seconds = [0.0, 0.0, 0.0, 0.0]
+    for (t0, bpm), (t1, _) in zip(hr_points, hr_points[1:]):
+        gap = min((t1 - t0).total_seconds(), MAX_SAMPLE_GAP_S)
+        share = bpm / max_hr
+        seconds[sum(share >= limit for limit in ZONE_LIMITS)] += gap
+    return seconds
+
+
+def intensity_minutes(zones):
+    """WHO counts a vigorous minute as two moderate minutes (150-300 moderate = 75-150 vigorous per week)."""
+    return (zones[1] + 2 * (zones[2] + zones[3])) / 60
+
+
+def compute_splits(speed_points, hr_points, distance_m=None):
+    """Per-kilometre times by integrating speed over time. Returns [] when the speed samples do not
+    cover the workout well enough to trust (gaps, or a total that disagrees with the distance)."""
+    if len(speed_points) < 3:
+        return []
+    covered, travelled = 0.0, [0.0]
+    for (t0, v0), (t1, _) in zip(speed_points, speed_points[1:]):
+        gap = (t1 - t0).total_seconds()
+        if gap > 30:
+            return []
+        covered += gap
+        travelled.append(travelled[-1] + v0 * gap)
+    total = travelled[-1]
+    if total < 1000 or (distance_m and abs(total - distance_m) / distance_m > 0.2):
+        return []
+    splits, next_km, last_time = [], 1000.0, speed_points[0][0]
+    for i in range(1, len(speed_points)):
+        while travelled[i] >= next_km:
+            span = travelled[i] - travelled[i - 1]
+            frac = (next_km - travelled[i - 1]) / span if span else 1.0
+            t0, t1 = speed_points[i - 1][0], speed_points[i][0]
+            crossing = t0 + (t1 - t0) * frac
+            seconds = (crossing - last_time).total_seconds()
+            hrs = [b for t, b in hr_points if last_time <= t <= crossing]
+            splits.append({"km": len(splits) + 1, "seconds": round(seconds),
+                           "pace_s_per_km": round(seconds), "avg_hr": round(sum(hrs) / len(hrs)) if hrs else None})
+            last_time, next_km = crossing, next_km + 1000.0
+    rest = total - (next_km - 1000.0)
+    if rest >= 100:
+        seconds = (speed_points[-1][0] - last_time).total_seconds()
+        hrs = [b for t, b in hr_points if t >= last_time]
+        splits.append({"km": round(rest / 1000, 2), "seconds": round(seconds), "partial": True,
+                       "pace_s_per_km": round(seconds / (rest / 1000)), "avg_hr": round(sum(hrs) / len(hrs)) if hrs else None})
+    return splits
+
+
+def build_workout(session, series, include_samples=False, max_hr=None):
     """`session` is a decoded exerciseSession doc; `series` maps record type -> decoded docs."""
     w_start, w_end = _span(session)
     app = session.get("app")
@@ -167,7 +224,12 @@ def build_workout(session, series, include_samples=False):
                                  "max": max(values), "samples": len(values)}
     if kind in PACE_TYPES and workout["distance_m"]:
         workout["pace_s_per_km"] = round(duration / (workout["distance_m"] / 1000))
+    if max_hr and hr:
+        zones = zone_seconds(hr, max_hr)
+        workout["zones_s"] = [round(z) for z in zones]
+        workout["intensity_min"] = round(intensity_minutes(zones), 1)
     if include_samples:
+        workout["splits"] = compute_splits(speed, hr, distance)
         workout["samples"] = {
             "heart_rate": [{"t": to_iso(t), "bpm": v} for t, v in hr],
             "speed": [{"t": to_iso(t), "mps": round(v, 3)} for t, v in speed],

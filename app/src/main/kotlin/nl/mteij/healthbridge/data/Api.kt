@@ -43,6 +43,15 @@ data class Samples(
 )
 
 @Serializable
+data class Split(val km: Double, val seconds: Int, @SerialName("pace_s_per_km") val paceSPerKm: Int, @SerialName("avg_hr") val avgHr: Int? = null, val partial: Boolean = false)
+
+@Serializable
+data class SeriesPoint(val date: String, val value: Double, val unit: String = "")
+
+@Serializable
+data class WeekSummary(val workouts: Int = 0, @SerialName("intensity_min") val intensityMin: Double? = null)
+
+@Serializable
 data class DayTotal(val date: String, val value: Double? = null, val unit: String = "", val source: String? = null)
 
 @Serializable
@@ -65,6 +74,7 @@ data class OverviewData(
     val sleep: List<SleepNight> = emptyList(),
     val measurements: List<Measurement> = emptyList(),
     @SerialName("recent_workouts") val recentWorkouts: List<Workout> = emptyList(),
+    val week: WeekSummary = WeekSummary(),
 )
 
 @Serializable
@@ -87,6 +97,9 @@ data class Workout(
     @SerialName("elevation_gain_m") val elevationGainM: Double? = null,
     val notes: String? = null,
     val samples: Samples? = null,
+    @SerialName("zones_s") val zonesS: List<Int>? = null,
+    @SerialName("intensity_min") val intensityMin: Double? = null,
+    val splits: List<Split> = emptyList(),
 )
 
 /** Compresses larger request bodies; the server accepts `Content-Encoding: gzip`. */

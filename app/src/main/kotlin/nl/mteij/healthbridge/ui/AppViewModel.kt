@@ -10,7 +10,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import nl.mteij.healthbridge.Graph
+import nl.mteij.healthbridge.data.DayTotal
+import nl.mteij.healthbridge.data.HealthMath
 import nl.mteij.healthbridge.data.OverviewData
+import nl.mteij.healthbridge.data.SeriesPoint
 import nl.mteij.healthbridge.data.SleepNight
 import nl.mteij.healthbridge.data.Workout
 import nl.mteij.healthbridge.health.HealthAccess
@@ -43,6 +46,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val _sleep = MutableStateFlow(Loadable<List<SleepNight>>())
     val sleep: StateFlow<Loadable<List<SleepNight>>> = _sleep
 
+    private val _trends = MutableStateFlow<Map<String, Loadable<List<SeriesPoint>>>>(emptyMap())
+    val trends: StateFlow<Map<String, Loadable<List<SeriesPoint>>>> = _trends
+
     private val _health = MutableStateFlow(HealthState())
     val health: StateFlow<HealthState> = _health
 
@@ -67,6 +73,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         state: MutableStateFlow<Loadable<T>>,
         force: Boolean,
         maxAgeMs: Long = 60_000,
+        onLoaded: (T) -> Unit = {},
     ) {
         if (!Graph.prefs.isLoggedIn) return
         viewModelScope.launch {
@@ -84,18 +91,68 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val value = withContext(Dispatchers.Default) { decode(text) }
                 withContext(Dispatchers.IO) { Graph.cache.write(key, text) }
                 value
-            }.onSuccess { state.value = Loadable(it) }
+            }.onSuccess {
+                state.value = Loadable(it)
+                onLoaded(it)
+            }
                 .onFailure { state.value = state.value.copy(refreshing = false, error = it.message ?: it.javaClass.simpleName) }
         }
     }
 
+    /** Heart rate maximum used for zones: from the profile's age, raised by what workouts show. */
+    fun maxHr(): Int? = HealthMath.maxHr(HealthMath.age(Graph.prefs.birthYear), Graph.prefs.observedMaxHr.takeIf { it > 0 })
+
+    private fun hrQuery() = maxHr()?.let { "&max_hr=$it" }.orEmpty()
+
     fun loadOverview(force: Boolean = false) = load(
-        "overview", "overview?tz=$tz", { json.decodeFromString(OverviewData.serializer(), it) }, _overview, force,
+        "overview${maxHr()}", "overview?tz=$tz${hrQuery()}", { json.decodeFromString(OverviewData.serializer(), it) }, _overview, force,
     )
 
     fun loadWorkouts(force: Boolean = false) = load(
-        "workouts", "workouts?limit=200", { json.decodeFromString(ListSerializer(Workout.serializer()), it) }, _workouts, force, 120_000,
+        "workouts${maxHr()}", "workouts?limit=200${hrQuery()}", { json.decodeFromString(ListSerializer(Workout.serializer()), it) }, _workouts, force, 120_000,
+        onLoaded = { list ->
+            HealthMath.observedMaxHr(list.mapNotNull { it.heartRate?.max })?.let { Graph.prefs.observedMaxHr = it }
+        },
     )
+
+    /** Called after the profile changes: zones depend on the maximum heart rate. */
+    fun profileChanged() {
+        loadedAt.clear()
+        _overview.value = Loadable()
+        _workouts.value = Loadable()
+        _details.value = emptyMap()
+        loadOverview(force = true)
+        loadWorkouts(force = true)
+    }
+
+    /** One metric over a date range, keyed so the screen can show this period and the previous one. */
+    fun loadTrend(metric: String, from: LocalDate, to: LocalDate, force: Boolean = false): String {
+        val key = "trend-$metric-$from-$to"
+        val body = metric in setOf("weight", "resting_heart_rate", "vo2_max", "body_fat")
+        val path = when {
+            metric == "sleep" -> "sleep?from=$from&to=$to&tz=$tz"
+            body -> "series?name=$metric&from=$from&to=$to&tz=$tz"
+            else -> "daily?metric=$metric&from=$from&to=$to&tz=$tz"
+        }
+        val state = MutableStateFlow(_trends.value[key] ?: Loadable())
+        if (key !in loadedAt) {
+            viewModelScope.launch { state.collect { value -> _trends.value = _trends.value + (key to value) } }
+        }
+        load(
+            key, path,
+            { text ->
+                when {
+                    metric == "sleep" -> json.decodeFromString(ListSerializer(SleepNight.serializer()), text)
+                        .mapNotNull { n -> n.asleepMin?.let { SeriesPoint(n.date, it / 60.0, "h") } }
+                    body -> json.decodeFromString(ListSerializer(SeriesPoint.serializer()), text)
+                    else -> json.decodeFromString(ListSerializer(DayTotal.serializer()), text)
+                        .mapNotNull { d -> d.value?.let { SeriesPoint(d.date, it, d.unit) } }
+                }
+            },
+            state, force, if (to < LocalDate.now()) 30 * 60_000 else 60_000,
+        )
+        return key
+    }
 
     fun loadSleep(force: Boolean = false) {
         val to = LocalDate.now()
@@ -111,7 +168,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             state.collect { value -> _details.value = _details.value + (id to value) }
         }
-        load("workout-$id", "workouts/$id?points=240", { json.decodeFromString(Workout.serializer(), it) }, state, force, 5 * 60_000)
+        load("workout-$id-${maxHr()}", "workouts/$id?points=240${hrQuery()}", { json.decodeFromString(Workout.serializer(), it) }, state, force, 5 * 60_000)
     }
 
     fun refreshAll() {

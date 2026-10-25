@@ -32,18 +32,6 @@ fun pace(secondsPerKm: Long): String = String.format(Locale.ROOT, "%d:%02d /km",
 fun workoutLabel(type: String): String =
     type.replace('_', ' ').replaceFirstChar { it.uppercase() }
 
-fun workoutEmoji(type: String): String = when {
-    type.startsWith("running") -> "🏃"
-    type.startsWith("biking") -> "🚴"
-    type.startsWith("walking") || type == "hiking" -> "🚶"
-    type.startsWith("swimming") -> "🏊"
-    type == "strength_training" || type == "weightlifting" -> "🏋️"
-    type == "yoga" || type == "pilates" || type == "stretching" -> "🧘"
-    type == "soccer" || type == "football_american" -> "⚽"
-    type == "tennis" || type == "table_tennis" || type == "squash" || type == "badminton" -> "🎾"
-    type == "rowing" || type == "rowing_machine" -> "🚣"
-    else -> "💪"
-}
 
 fun weekdayShort(isoDate: String): String = runCatching {
     java.time.LocalDate.parse(isoDate).dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.getDefault())

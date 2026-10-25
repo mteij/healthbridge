@@ -108,3 +108,18 @@ def sleep_sessions(userid, cipher, start_date, end_date, tz_name=None):
             "stages_min": {k: round(v / 60) for k, v in stages.items()},
         })
     return out
+
+
+def measurement_series(userid, cipher, name, start_date, end_date, tz_name=None):
+    """One value per day (the last of that day) for a body measurement, only days that have one."""
+    record_type, extract, unit = LATEST_TYPES[name]
+    tz = _tz(tz_name)
+    first = datetime.datetime.combine(start_date, datetime.time.min, tz)
+    last = datetime.datetime.combine(end_date + datetime.timedelta(days=1), datetime.time.min, tz)
+    cursor = db.records(userid, record_type).find({"start": {"$gte": to_iso(first), "$lt": to_iso(last)}}).sort("start", 1)
+    per_day = {}
+    for doc in decrypt_docs(cursor, cipher):
+        value = extract(doc["data"])
+        if value is not None:
+            per_day[parse_iso(doc["start"]).astimezone(tz).date()] = round(float(value), 2)
+    return [{"date": d.isoformat(), "value": v, "unit": unit} for d, v in sorted(per_day.items())]

@@ -74,3 +74,24 @@ def test_native_react_native_health_connect_shapes():
     }
     w = build_workout(RUN, series)
     assert (w["distance_m"], w["active_kcal"], w["avg_speed_mps"]) == (5000.0, 310.5, 3.0)
+
+
+def test_heart_rate_zones_follow_acsm_bands():
+    samples = [{"time": f"2026-10-20T10:{m:02d}:00Z", "beatsPerMinute": bpm}
+               for m, bpm in enumerate([100, 100, 130, 130, 160, 160, 180, 180, 195, 195])]
+    series = {"heartRate": [rec("h", "2026-10-20T10:00:00.000Z", "2026-10-20T10:30:00.000Z", "strava", samples=samples)]}
+    w = build_workout(RUN, series, max_hr=200)
+    # 100 bpm = 50% light, 130 = 65% moderate, 160 = 80% vigorous, 180 = 90% vigorous, 195 = 97.5% peak
+    assert w["zones_s"] == [120, 120, 240, 60]  # last sample has no successor
+    assert w["intensity_min"] == round((120 + 2 * (240 + 60)) / 60, 1)
+
+
+def test_splits_from_speed_samples():
+    pts = [{"time": f"2026-10-20T10:{m // 60:02d}:{m % 60:02d}Z", "speed": {"inMetersPerSecond": 4.0}} for m in range(0, 1000, 10)]
+    series = {"speed": [rec("s", "2026-10-20T10:00:00.000Z", "2026-10-20T10:30:00.000Z", "strava", samples=pts)],
+              "distance": [rec("d", "2026-10-20T10:00:00.000Z", "2026-10-20T10:30:00.000Z", "strava", distance={"inMeters": 3950})]}
+    w = build_workout(RUN, series, include_samples=True)
+    assert [s["km"] for s in w["splits"][:3]] == [1, 2, 3] and w["splits"][0]["pace_s_per_km"] == 250
+    assert build_workout(RUN, {"speed": series["speed"]}, include_samples=True)["splits"]  # no distance record: still computed
+    sparse = {"speed": [rec("s", "2026-10-20T10:00:00.000Z", "2026-10-20T10:30:00.000Z", "strava", samples=pts[::6])]}
+    assert build_workout(RUN, sparse, include_samples=True)["splits"] == []  # 60 s gaps: not trusted

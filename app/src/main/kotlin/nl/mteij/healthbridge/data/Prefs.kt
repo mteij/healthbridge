@@ -69,12 +69,33 @@ class Prefs(context: Context) {
         get() = sp.getStringSet("disabledTypes", emptySet())!!.toSet()
         set(v) = put { putStringSet("disabledTypes", v) }
 
-    var stepGoal: Int
-        get() = sp.getInt("stepGoal", 8000)
-        set(v) = put { putInt("stepGoal", v) }
-    var maxHeartRate: Int
-        get() = sp.getInt("maxHeartRate", 190)
-        set(v) = put { putInt("maxHeartRate", v) }
+    /** Types whose full re-import has not finished yet; survives the app being killed mid-import. */
+    var pendingFull: Set<String>
+        get() = sp.getStringSet("pendingFull", emptySet())!!.toSet()
+        set(v) = put { putStringSet("pendingFull", v) }
+
+    var notificationsAsked: Boolean
+        get() = sp.getBoolean("notificationsAsked", false)
+        set(v) = put { putBoolean("notificationsAsked", v) }
+
+    /** Health profile. Zero or empty means "not set". */
+    var birthYear: Int
+        get() = sp.getInt("birthYear", 0)
+        set(v) = put { putInt("birthYear", v) }
+    var sex: String
+        get() = string("sex", "")!!
+        set(v) = put { putString("sex", v) }
+    var manualHeightCm: Float
+        get() = sp.getFloat("manualHeightCm", 0f)
+        set(v) = put { putFloat("manualHeightCm", v) }
+    var manualWeightKg: Float
+        get() = sp.getFloat("manualWeightKg", 0f)
+        set(v) = put { putFloat("manualWeightKg", v) }
+
+    /** Highest believable heart rate seen in the user's own workouts; refined whenever workouts load. */
+    var observedMaxHr: Int
+        get() = sp.getInt("observedMaxHr", 0)
+        set(v) = put { putInt("observedMaxHr", v) }
 
     var lastRunMs: Long
         get() = sp.getLong("lastRunMs", 0)
