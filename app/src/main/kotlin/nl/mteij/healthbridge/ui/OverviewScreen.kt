@@ -75,7 +75,7 @@ fun OverviewScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
     val power = context.getSystemService(PowerManager::class.java)
     val batteryOk = power.isIgnoringBatteryOptimizations(context.packageName)
     val dataGranted = RecordSpecs.all.any { it.readPermission in health.granted }
-    val backgroundGranted = HealthAccess.backgroundPermission in health.granted
+    val backgroundGranted = HealthAccess.backgroundPermission in health.granted && health.backgroundSupported
     val setupDone = health.status == HealthStatus.AVAILABLE && dataGranted && backgroundGranted && batteryOk
     val lastError = log.firstOrNull { it.level == LogEntry.Level.ERROR }
 
@@ -114,9 +114,9 @@ fun OverviewScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                         ) { permissionLauncher.launch(RecordSpecs.permissions) }
                         SetupRow(
                             done = backgroundGranted,
-                            title = stringResource(R.string.setup_bg_title),
+                            title = stringResource(if (health.backgroundSupported) R.string.setup_bg_title else R.string.setup_bg_unsupported),
                             action = stringResource(R.string.setup_bg_action),
-                            enabled = health.status == HealthStatus.AVAILABLE,
+                            enabled = health.status == HealthStatus.AVAILABLE && health.backgroundSupported,
                         ) { permissionLauncher.launch(setOf(HealthAccess.backgroundPermission, HealthAccess.historyPermission)) }
                         SetupRow(
                             done = batteryOk,

@@ -15,6 +15,7 @@ import nl.mteij.healthbridge.sync.SyncScheduler
 data class HealthState(
     val status: HealthStatus = HealthStatus.AVAILABLE,
     val granted: Set<String> = emptySet(),
+    val backgroundSupported: Boolean = true,
 )
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -42,7 +43,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             } else {
                 emptySet()
             }
-            _health.value = HealthState(status, granted)
+            val background = status == HealthStatus.AVAILABLE && HealthAccess.backgroundReadSupported(context)
+            _health.value = HealthState(status, granted, background)
         }
     }
 

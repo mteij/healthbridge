@@ -37,6 +37,7 @@ class SyncEngine(
 ) {
     private val mutex = Mutex()
     private val _status = MutableStateFlow<String?>(null)
+    private var historyGranted = false
 
     /** Human readable progress while a run is active, null when idle. */
     val status: StateFlow<String?> = _status
@@ -67,8 +68,11 @@ class SyncEngine(
 
         val client = HealthAccess.client(context)
         val granted = HealthAccess.granted(context)
+        historyGranted = HealthAccess.historyPermission in granted
         if (HealthAccess.backgroundPermission !in granted) {
             log.warn("Background access is not granted; syncing only works while the app is open")
+        } else if (!HealthAccess.backgroundReadSupported(context)) {
+            log.warn("This Health Connect version does not support background reads; update Health Connect")
         }
         val disabled = prefs.disabledTypes
         val specs = RecordSpecs.all.filter { it.readPermission in granted && it.key !in disabled }
@@ -90,6 +94,10 @@ class SyncEngine(
                 // network or server trouble: stop and let the caller retry later
                 log.error("${e.message ?: e.javaClass.simpleName}", spec.key)
                 return if (e is ApiException && e.code in 400..499 && e.code != 429) Outcome.FAILED else Outcome.RETRY
+            } catch (e: IllegalStateException) {
+                // Health Connect reports rate limits and a temporarily unavailable service this way
+                log.warn("Health Connect is busy or rate limiting, will retry: ${e.message}", spec.key)
+                return Outcome.RETRY
             } catch (e: SecurityException) {
                 failures++
                 log.error("Permission denied: ${e.message}", spec.key)
@@ -147,7 +155,10 @@ class SyncEngine(
         // take the changes token first so nothing written during the backfill is missed
         val changesToken = spec.newChangesToken(client)
         val now = Instant.now()
-        val from = now.minus(Duration.ofDays(prefs.backfillDays.toLong()))
+        // without the history permission Health Connect rejects reads older than 30 days
+        val days = if (historyGranted) prefs.backfillDays else minOf(prefs.backfillDays, MAX_DAYS_WITHOUT_HISTORY)
+        if (days < prefs.backfillDays) log.warn("History permission missing: importing only the last $days days", spec.key)
+        val from = now.minus(Duration.ofDays(days.toLong()))
         var pageToken: String? = null
         var uploaded = 0
         do {
@@ -157,11 +168,12 @@ class SyncEngine(
             pageToken = page.nextPageToken
         } while (pageToken != null)
         prefs.setChangesToken(spec.key, changesToken)
-        log.info("Initial import: $uploaded records from the last ${prefs.backfillDays} days", spec.key)
+        log.info("Initial import: $uploaded records from the last $days days", spec.key)
         return uploaded
     }
 
     private companion object {
         const val UPLOAD_CHUNK = 200
+        const val MAX_DAYS_WITHOUT_HISTORY = 29
     }
 }
