@@ -6,6 +6,9 @@ HB_ROLLUP_DAYS are merged into one record per source app and hour (`agg: true`),
 storage for these types by roughly 10x. Records longer than 15 minutes (a workout's own distance
 or calories) and everything newer than the cutoff stay exactly as they were.
 
+Hours that overlap an exercise session are never rolled up: a workout's distance and calories are
+read from the fine-grained records around it, and an hourly total would smear them.
+
 Once an hour has been rolled up, records for it that arrive later are ignored: they would be
 counted twice when the app re-imports a period.
 """
@@ -72,6 +75,18 @@ def drop_rolled_up(userid, record_type, docs):
     return [d for d in docs if keys.get(d["_id"]) not in existing]
 
 
+def _workout_hours(userid, since_iso, cutoff_iso):
+    """Start of every hour touched by an exercise session in the range (from the plain fields only)."""
+    query = {"start": {"$lt": cutoff_iso}, "end": {"$gte": since_iso or ""}}
+    hours = set()
+    for doc in db.records(userid, "exerciseSession").find(query, {"start": 1, "end": 1}):
+        hour, last = _hour_start(parse_iso(doc["start"])), _hour_start(parse_iso(doc["end"] or doc["start"]))
+        while hour <= last:
+            hours.add(hour)
+            hour += HOUR
+    return hours
+
+
 def rollup_user(user, now=None, days=None):
     """Returns (records removed, buckets written)."""
     days = rollup_days() if days is None else days
@@ -83,6 +98,7 @@ def rollup_user(user, now=None, days=None):
     userid, cipher = user["_id"], data_cipher(user)
     since = user.get("rollupDone")
     removed = written = 0
+    protected = _workout_hours(userid, since, cutoff_iso)
     for record_type, (read, build) in ROLLUP_TYPES.items():
         collection = db.records(userid, record_type)
         query = {"start": {"$lt": cutoff_iso}, "agg": {"$ne": True}}
@@ -91,8 +107,9 @@ def rollup_user(user, now=None, days=None):
         groups = {}
         for doc in collection.find(query, {"start": 1, "end": 1, "app": 1}):
             if is_small(doc):
-                key = (doc.get("app"), _hour_start(parse_iso(doc["start"])))
-                groups.setdefault(key, []).append(doc["_id"])
+                hour = _hour_start(parse_iso(doc["start"]))
+                if hour not in protected:
+                    groups.setdefault((doc.get("app"), hour), []).append(doc["_id"])
         for (app, hour), ids in groups.items():
             total, used = 0.0, []
             for doc in decrypt_docs(collection.find({"_id": {"$in": ids}}), cipher):

@@ -63,3 +63,16 @@ def test_disabled_by_default(client, session, monkeypatch):
     monkeypatch.delenv("HB_ROLLUP_DAYS", raising=False)
     post(client, session["token"], "steps", minute_steps(10, "phone", 5))
     assert rollup_user(user(), now=NOW) == (0, 0)
+
+
+def test_hours_with_a_workout_are_left_exact(client, session, monkeypatch):
+    monkeypatch.setenv("HB_ROLLUP_DAYS", "14")
+    t = session["token"]
+    post(client, t, "steps", minute_steps(10, "phone", 30))  # 08:00-08:30 on the 10th
+    post(client, t, "exerciseSession", [{"metadata": {"id": "run", "dataOrigin": "phone"}, "startTime": "2026-10-10T08:10:00Z",
+                                         "endTime": "2026-10-10T08:40:00Z", "exerciseType": 56}])
+    post(client, t, "steps", minute_steps(12, "phone", 30))  # same hour on a day without a workout
+    assert rollup_user(user(), now=NOW) == (30, 1)
+    ids = {d["_id"] for d in client.post("/api/v2/fetch/steps", json={}, headers=auth(t)).get_json()}
+    assert sum(i.startswith("phone-10-") for i in ids) == 30  # kept
+    assert sum(i.startswith("phone-12-") for i in ids) == 0 and any(i.startswith("agg:steps") for i in ids)
