@@ -42,7 +42,9 @@ jobs:
           echo "HB_KEY_PASSWORD=$HB_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Build release APK
-        run: gradle --no-daemon assembleRelease -PversionCode=${{ github.run_number }} -PversionName=0.1.${{ github.run_number }}
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then NAME="${GITHUB_REF_NAME#v}"; else NAME="0.1.${GITHUB_RUN_NUMBER}-dev"; fi
+          gradle --no-daemon assembleRelease -PversionCode=${GITHUB_RUN_NUMBER} -PversionName="$NAME"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -54,3 +56,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/release/*.apk
+          generate_release_notes: true

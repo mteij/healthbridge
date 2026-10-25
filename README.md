@@ -4,7 +4,7 @@ A self-hosted gateway between Android's Health Connect and your own server.
 Hard fork of [HCGateway](https://github.com/ShuchirJ/HCGateway) by Shuchir Jain (MIT).
 
 - `api/` — server (Flask + MongoDB, served by gunicorn)
-- `app/` — Android app (being rewritten in Kotlin)
+- `app/` — native Android app (Kotlin, Jetpack Compose, WorkManager); APKs are attached to each release
 - `scripts/` — maintenance scripts
 - `doc/api-documentation.yml` — upstream API reference (v2 routes are still compatible)
 
@@ -36,3 +36,15 @@ Hard fork of [HCGateway](https://github.com/ShuchirJ/HCGateway) by Shuchir Jain 
 ## Tests
 
 `api/run-tests.sh` runs the suite against a throwaway MongoDB in Docker.
+
+## Android app
+
+Syncs Health Connect to your server with the Health Connect changes API: the first run imports the
+last N days, later runs only transfer what is new, edited or deleted. Failures are listed on the
+Activity tab instead of being skipped silently. The Overview tab checks the things that make
+background sync fail in practice (background read permission, battery optimisation) and lists
+your recent workouts from `/api/v2/workouts`.
+
+Download the APK from the [releases](../../releases). Builds are produced by GitHub Actions
+(`.github/workflows/android.yml`); to sign with your own key set the repository secrets
+`HB_KEYSTORE_B64`, `HB_KEYSTORE_PASSWORD` and `HB_KEY_ALIAS`.
