@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "nl.mteij.healthbridge"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "nl.mteij.healthbridge"
