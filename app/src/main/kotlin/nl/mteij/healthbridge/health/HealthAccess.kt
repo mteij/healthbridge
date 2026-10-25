@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectFeatures
-import androidx.health.connect.client.feature.ExperimentalFeatureAvailabilityApi
 import androidx.health.connect.client.permission.HealthPermission
 
 enum class HealthStatus { AVAILABLE, UPDATE_REQUIRED, UNAVAILABLE }
@@ -26,7 +25,6 @@ object HealthAccess {
         client(context).permissionController.getGrantedPermissions()
 
     /** Background reads need both the permission and a Health Connect version that supports them. */
-    @OptIn(ExperimentalFeatureAvailabilityApi::class)
     fun backgroundReadSupported(context: Context): Boolean = runCatching {
         client(context).features.getFeatureStatus(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND) ==
             HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
