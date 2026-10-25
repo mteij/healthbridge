@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Healthbridge</string>
+    <string name="tab_overview">Overzicht</string>
+    <string name="tab_activity">Activiteit</string>
+    <string name="tab_settings">Instellingen</string>
+    <string name="login_intro">Log in op je Healthbridge-server om Health Connect te synchroniseren.</string>
+    <string name="server_url">Server-URL</string>
+    <string name="username">Gebruikersnaam</string>
+    <string name="password">Wachtwoord</string>
+    <string name="sign_in">Inloggen</string>
+    <string name="sign_out">Uitloggen</string>
+    <string name="setup_title">Installatie afronden</string>
+    <string name="setup_intro">Synchroniseren werkt alleen betrouwbaar als dit allemaal in orde is.</string>
+    <string name="setup_hc_title">Health Connect is geïnstalleerd</string>
+    <string name="setup_hc_action">Installeren</string>
+    <string name="setup_perm_title">Toegang tot je gezondheidsdata</string>
+    <string name="setup_perm_action">Toestaan</string>
+    <string name="setup_bg_title">Lezen op de achtergrond en oudere geschiedenis toestaan</string>
+    <string name="setup_bg_action">Toestaan</string>
+    <string name="setup_battery_title">Uitzonderen van batterijoptimalisatie (voorkomt dat Android de app in slaap zet)</string>
+    <string name="setup_battery_action">Aanpassen</string>
+    <string name="recent_workouts">Recente trainingen</string>
+    <string name="refresh">Vernieuwen</string>
+    <string name="no_workouts">Nog geen trainingen. Ze verschijnen hier zodra Health Connect trainingen bevat.</string>
+    <string name="syncing">Synchroniseren…</string>
+    <string name="sync_failed">Laatste synchronisatie mislukt</string>
+    <string name="not_synced_yet">Nog niet gesynchroniseerd</string>
+    <string name="synced_ago">Gesynchroniseerd %1$s</string>
+    <string name="sync_now">Nu synchroniseren</string>
+    <string name="clear">Wissen</string>
+    <string name="log_empty">Nog niets gelogd.</string>
+    <string name="account">Account</string>
+    <string name="sync_interval">Synchronisatie-interval</string>
+    <string name="sync_interval_hint">Android bundelt achtergrondtaken, dus dit is een minimum.</string>
+    <string name="unmetered_only">Alleen via wifi</string>
+    <string name="unmetered_hint">Niet synchroniseren via mobiele data.</string>
+    <string name="backfill">Eerste import (dagen)</string>
+    <string name="backfill_hint">Hoe ver de eerste synchronisatie per datatype teruggaat.</string>
+    <string name="full_resync">Alles opnieuw importeren</string>
+    <string name="data_types">Datatypes</string>
+    <string name="version">Versie %1$s</string>
+</resources>
