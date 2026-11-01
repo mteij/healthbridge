@@ -78,4 +78,4 @@ api/run-tests.sh   # server tests, needs Docker
 
 ## License
 
-GPL-3.0. Based on [HCGateway](https://github.com/ShuchirJ/HCGateway) by Shuchir Jain.
+GPL-3.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). Originally based on [HCGateway](https://github.com/ShuchirJ/HCGateway) by Shuchir Jain.
