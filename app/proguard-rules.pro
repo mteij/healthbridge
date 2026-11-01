@@ -1,3 +1,5 @@
+# AGP 9 only accepts the optimize defaults file; keep the previous shrink-only behaviour.
+-dontoptimize
 # Shrink unused code but do not rename anything: Health Connect record times are read reflectively.
 -dontobfuscate
 -keepclassmembers class androidx.health.connect.client.records.** {

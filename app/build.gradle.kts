@@ -30,10 +30,10 @@ android {
 
     buildTypes {
         release {
-            // shrink only (proguard-android.txt disables optimisation, the rules disable renaming)
+            // shrink only: AGP 9 requires the optimize defaults file, so proguard-rules.pro turns optimisation and renaming off
             isMinifyEnabled = (project.findProperty("minify") as String?) != "false"
             isShrinkResources = isMinifyEnabled
-            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // falls back to the debug key when no release keystore is provided (local builds)
             signingConfig = if (System.getenv("HB_KEYSTORE") != null) signingConfigs.getByName("release")
             else signingConfigs.getByName("debug")
