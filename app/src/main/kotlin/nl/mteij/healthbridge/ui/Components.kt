@@ -38,6 +38,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.delay
+import nl.mteij.healthbridge.Graph
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -259,10 +266,18 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, color:
 /** Opaque header that stays at the top while the list scrolls; it clears the status bar once stuck. */
 @Composable
 fun StickyHeader(stuck: Boolean, modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    val background = MaterialTheme.colorScheme.background
+    val fade by animateFloatAsState(if (stuck) 1f else 0f, tween(150), label = "headerFade")
     androidx.compose.material3.Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.background,
-        shadowElevation = if (stuck) 3.dp else 0.dp,
+        modifier = modifier.fillMaxWidth().drawBehind {
+            // list content dissolves under the header instead of being cut off by a hard line
+            val h = 18.dp.toPx()
+            drawRect(
+                Brush.verticalGradient(listOf(background.copy(alpha = fade), Color.Transparent), startY = size.height, endY = size.height + h),
+                topLeft = Offset(0f, size.height), size = Size(size.width, h),
+            )
+        },
+        color = background,
     ) {
         Column(
             (if (stuck) Modifier.statusBarsPadding() else Modifier).padding(horizontal = 16.dp, vertical = 8.dp),
@@ -270,6 +285,33 @@ fun StickyHeader(stuck: Boolean, modifier: Modifier = Modifier, content: @Compos
             content = content,
         )
     }
+}
+
+/** Pull down on a tab to start a sync and reload what the screen shows; the spinner stays while the sync runs. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PullToRefresh(vm: AppViewModel, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val progress by Graph.engine.progress.collectAsState()
+    var pulled by remember { mutableStateOf(false) }
+    LaunchedEffect(pulled) {
+        if (pulled) { delay(900); pulled = false }
+    }
+    PullToRefreshBox(
+        isRefreshing = pulled || progress != null,
+        onRefresh = { pulled = true; vm.syncNow(); vm.refreshAll() },
+        modifier = modifier.fillMaxSize(),
+    ) { content() }
+}
+
+/**
+ * Soft fade from the page colour to transparent, used to blend scrolling content into the status
+ * bar and the floating navigation instead of showing it with a hard edge.
+ */
+@Composable
+fun EdgeFade(modifier: Modifier = Modifier, fromTop: Boolean) {
+    val background = MaterialTheme.colorScheme.background
+    val colors = listOf(background.copy(alpha = 0.96f), background.copy(alpha = 0.7f), Color.Transparent)
+    Box(modifier.fillMaxWidth().background(Brush.verticalGradient(if (fromTop) colors else colors.reversed())))
 }
 
 /** True once the item at [index] has reached the top of the list. */

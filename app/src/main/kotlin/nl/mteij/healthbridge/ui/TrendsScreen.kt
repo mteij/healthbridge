@@ -115,9 +115,10 @@ fun TrendsScreen(vm: AppViewModel) {
     val trends by vm.trends.collectAsState()
     val currentKey = "trend-${metric.key}-$from-$to"
     val previousKey = "trend-${metric.key}-$prevFrom-$prevTo"
-    LaunchedEffect(metric, period, offset) {
-        vm.loadTrend(metric.key, from, to)
-        vm.loadTrend(metric.key, prevFrom, prevTo)
+    val refreshes by vm.refreshes.collectAsState()
+    LaunchedEffect(metric, period, offset, refreshes) {
+        vm.loadTrend(metric.key, from, to, force = refreshes > 0)
+        vm.loadTrend(metric.key, prevFrom, prevTo, force = refreshes > 0)
     }
     val current = trends[currentKey]
     val points = current?.value.orEmpty()

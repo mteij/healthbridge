@@ -171,9 +171,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         load("workout-$id-${maxHr()}", "workouts/$id?points=240${hrQuery()}", { json.decodeFromString(Workout.serializer(), it) }, state, force, 5 * 60_000)
     }
 
+    private val _refreshes = MutableStateFlow(0)
+    /** Bumped by every pull-to-refresh; screens with their own loaders key on it to reload. */
+    val refreshes: StateFlow<Int> = _refreshes
+
     fun refreshAll() {
+        _refreshes.value += 1
         loadOverview(force = true)
         loadWorkouts(force = true)
+        loadSleep(force = true)
     }
 
     fun refreshHealth() {

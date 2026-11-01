@@ -56,13 +56,15 @@ fun Root(vm: AppViewModel = viewModel()) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         NavHost(nav, startDestination = "home") {
             composable("home") {
-                HomeScreen(
-                    vm, onWorkout = { nav.navigate("workout/$it") }, onWorkouts = { nav.navigate("workouts") },
-                    onSleep = { nav.navigate("sleep") }, onProfile = { nav.navigate("profile") },
-                )
+                PullToRefresh(vm) {
+                    HomeScreen(
+                        vm, onWorkout = { nav.navigate("workout/$it") }, onWorkouts = { nav.navigate("workouts") },
+                        onSleep = { nav.navigate("sleep") }, onProfile = { nav.navigate("profile") },
+                    )
+                }
             }
-            composable("workouts") { WorkoutsScreen(vm, onWorkout = { nav.navigate("workout/$it") }) }
-            composable("trends") { TrendsScreen(vm) }
+            composable("workouts") { PullToRefresh(vm) { WorkoutsScreen(vm, onWorkout = { nav.navigate("workout/$it") }) } }
+            composable("trends") { PullToRefresh(vm) { TrendsScreen(vm) } }
             composable("settings") {
                 SettingsScreen(vm, onLog = { nav.navigate("log") }, onProfile = { nav.navigate("profile") }, onDataTypes = { nav.navigate("datatypes") })
             }

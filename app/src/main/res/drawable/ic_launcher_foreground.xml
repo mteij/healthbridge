@@ -4,19 +4,22 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- heart -->
+    <path
+        android:fillColor="#4FD1C5"
+        android:pathData="M54 82 C50 79 26 63 26 45 C26 35 33 28 42 28 C47 28 51.5 30.5 54 35 C56.5 30.5 61 28 66 28 C75 28 82 35 82 45 C82 63 58 79 54 82 Z" />
     <!-- bridge arch -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M24,70 C24,48 40,36 54,36 C68,36 84,48 84,70"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round"
-        android:strokeWidth="5" />
-    <!-- heartbeat line -->
+        android:fillColor="#022236"
+        android:pathData="M38 63 C38 53 45 47 54 47 C63 47 70 53 70 63 Z"
+        android:strokeColor="#022236"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4" />
+    <!-- water line -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M20,62 L40,62 L47,48 L55,76 L62,56 L67,62 L88,62"
-        android:strokeColor="#4FD1C5"
+        android:pathData="M45 71 H63"
+        android:strokeColor="#022236"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="5" />
+        android:strokeWidth="4" />
 </vector>
