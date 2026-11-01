@@ -1,15 +1,12 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
 
 android {
     namespace = "nl.mteij.healthbridge"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "nl.mteij.healthbridge"
@@ -33,10 +30,10 @@ android {
 
     buildTypes {
         release {
-            // shrink only (proguard-android.txt disables optimisation, the rules disable renaming)
+            // shrink only: AGP 9 requires the optimize defaults file, so proguard-rules.pro turns optimisation and renaming off
             isMinifyEnabled = (project.findProperty("minify") as String?) != "false"
             isShrinkResources = isMinifyEnabled
-            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // falls back to the debug key when no release keystore is provided (local builds)
             signingConfig = if (System.getenv("HB_KEYSTORE") != null) signingConfigs.getByName("release")
             else signingConfigs.getByName("debug")
@@ -51,10 +48,6 @@ android {
         compose = true
         buildConfig = true
     }
-}
-
-kotlin {
-    compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
 }
 
 dependencies {

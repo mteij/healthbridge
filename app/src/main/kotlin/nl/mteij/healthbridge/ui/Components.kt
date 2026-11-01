@@ -68,7 +68,7 @@ object MetricColor {
 @Composable
 fun ElevatedSection(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-    val shape = RoundedCornerShape(24.dp)
+    val shape = MaterialTheme.shapes.extraLarge
     if (onClick != null) {
         Card(onClick = onClick, modifier = modifier, shape = shape, colors = colors) { content() }
     } else {
@@ -288,7 +288,7 @@ fun StickyHeader(stuck: Boolean, modifier: Modifier = Modifier, content: @Compos
 }
 
 /** Pull down on a tab to start a sync and reload what the screen shows; the spinner stays while the sync runs. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PullToRefresh(vm: AppViewModel, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val progress by Graph.engine.progress.collectAsState()
@@ -296,10 +296,18 @@ fun PullToRefresh(vm: AppViewModel, modifier: Modifier = Modifier, content: @Com
     LaunchedEffect(pulled) {
         if (pulled) { delay(900); pulled = false }
     }
+    val refreshing = pulled || progress != null
+    val state = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
     PullToRefreshBox(
-        isRefreshing = pulled || progress != null,
+        isRefreshing = refreshing,
         onRefresh = { pulled = true; vm.syncNow(); vm.refreshAll() },
         modifier = modifier.fillMaxSize(),
+        state = state,
+        indicator = {
+            androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.LoadingIndicator(
+                state = state, isRefreshing = refreshing, modifier = Modifier.align(Alignment.TopCenter),
+            )
+        },
     ) { content() }
 }
 

@@ -1,7 +1,8 @@
 [versions]
-agp = "8.13.2"
+agp = "9.1.1"
 kotlin = "2.4.21"
-composeBom = "2025.09.00"
+composeBom = "2026.09.00"
+material3 = "1.5.0-beta02"
 healthConnect = "1.1.0"
 work = "2.10.5"
 okhttp = "5.1.0"
@@ -21,7 +22,7 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }
-androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
+androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 androidx-compose-icons = { module = "androidx.compose.material:material-icons-extended" }
 androidx-compose-tooling = { module = "androidx.compose.ui:ui-tooling-preview" }
 androidx-health-connect = { module = "androidx.health.connect:connect-client", version.ref = "healthConnect" }
@@ -33,6 +34,5 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
