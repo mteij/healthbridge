@@ -1,6 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="256" height="256" role="img" aria-label="Healthbridge">
   <rect width="108" height="108" rx="24" fill="#022236"/>
-  <path d="M54 82 C50 79 26 63 26 45 C26 35 33 28 42 28 C47 28 51.5 30.5 54 35 C56.5 30.5 61 28 66 28 C75 28 82 35 82 45 C82 63 58 79 54 82 Z" fill="#4FD1C5"/>
-  <path d="M38 63 C38 53 45 47 54 47 C63 47 70 53 70 63 Z" fill="#022236" stroke="#022236" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M45 71 H63" fill="none" stroke="#022236" stroke-width="4" stroke-linecap="round"/>
+  <rect x="28" y="28" width="11" height="52" rx="2" fill="#fff"/><rect x="69" y="28" width="11" height="52" rx="2" fill="#fff"/><path d="M39 56H46L51 42L58 70L63 56H69" fill="none" stroke="#4FD1C5" stroke-width="6" stroke-linejoin="miter"/>
 </svg>
