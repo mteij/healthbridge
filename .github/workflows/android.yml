@@ -2,7 +2,7 @@ name: Android
 
 on:
   push:
-    branches: [main, app-rewrite, expressive]
+    branches: [main, app-rewrite, expressive, crashfix]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
@@ -63,3 +63,23 @@ jobs:
         with:
           files: app/build/outputs/apk/release/*.apk
           generate_release_notes: true
+
+  # Starts the built APK on an emulator and prints the crash log, if any.
+  smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: healthbridge-apk
+          path: apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          script: bash .github/smoke.sh
