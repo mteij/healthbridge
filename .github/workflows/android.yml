@@ -2,7 +2,7 @@ name: Android
 
 on:
   push:
-    branches: [main, app-rewrite]
+    branches: [main, app-rewrite, expressive]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
@@ -31,7 +31,13 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.14.6"
+          gradle-version: "9.3.1"
+
+      - name: Install Android platform 37
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | sudo "$SDKM" --licenses > /dev/null || true
+          sudo "$SDKM" "platforms;android-37" "build-tools;36.0.0"
 
       - name: Restore release keystore
         if: env.HB_KEYSTORE_B64 != ''
