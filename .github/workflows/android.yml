@@ -37,7 +37,7 @@ jobs:
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | sudo "$SDKM" --licenses > /dev/null || true
-          sudo "$SDKM" "platforms;android-37" "build-tools;36.0.0"
+          sudo "$SDKM" "platforms;android-37.0" "build-tools;36.0.0"
 
       - name: Restore release keystore
         if: env.HB_KEYSTORE_B64 != ''
