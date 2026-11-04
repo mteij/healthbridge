@@ -11,6 +11,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShowChart
@@ -53,6 +66,11 @@ fun Root(vm: AppViewModel = viewModel()) {
     )
     val progress by Graph.engine.progress.collectAsState()
 
+    var bannerDismissed by remember { mutableStateOf(false) }
+    LaunchedEffect(progress == null) { if (progress == null) bannerDismissed = false }
+
+    // Text outside a Surface would fall back to black; give the whole app the theme's content colour
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         NavHost(nav, startDestination = "home") {
             composable("home") {
@@ -79,16 +97,19 @@ fun Root(vm: AppViewModel = viewModel()) {
 
         // import / sync progress, visible on every screen
         AnimatedVisibility(
-            progress != null, Modifier.align(Alignment.TopCenter),
+            progress != null && !bannerDismissed, Modifier.align(Alignment.TopCenter),
             enter = slideInVertically { -it }, exit = slideOutVertically { -it },
         ) {
             val p = progress
             Surface(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)
+                    // swipe the banner away; it comes back with the next sync
+                    .pointerInput(Unit) { detectDragGestures { _, drag -> if (drag.y < -8f || kotlin.math.abs(drag.x) > 12f) bannerDismissed = true } },
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.inverseSurface, shadowElevation = 8.dp,
             ) {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 12.dp), verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f).padding(top = 8.dp)) {
                     val line = when {
                         p == null || p.total == 0 -> stringResource(R.string.syncing)
                         else -> "${stringResource(R.string.syncing)} · ${p.label} (${p.index + 1}/${p.total})" +
@@ -98,6 +119,10 @@ fun Root(vm: AppViewModel = viewModel()) {
                     val fraction = p?.fraction
                     if (fraction == null) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
                     else LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                }
+                IconButton(onClick = { bannerDismissed = true }, Modifier.size(32.dp)) {
+                    Icon(Icons.Rounded.Close, stringResource(R.string.dismiss), tint = MaterialTheme.colorScheme.inverseOnSurface)
+                }
                 }
             }
         }
@@ -117,5 +142,6 @@ fun Root(vm: AppViewModel = viewModel()) {
                 },
             )
         }
+    }
     }
 }

@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.layout
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -265,22 +266,36 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, color:
 
 /** Opaque header that stays at the top while the list scrolls; it clears the status bar once stuck. */
 @Composable
-fun StickyHeader(stuck: Boolean, modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+fun StickyHeader(stuck: Boolean, modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) =
+    StickyHeader({ if (stuck) 1f else 0f }, modifier, content)
+
+/**
+ * [stuck] is 0..1 and read in the layout/draw phase only: the status bar inset grows continuously
+ * while the header travels the last few pixels to the top, so nothing jumps and scrolling does not recompose.
+ */
+@Composable
+fun StickyHeader(stuck: () -> Float, modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     val background = MaterialTheme.colorScheme.background
-    val fade by animateFloatAsState(if (stuck) 1f else 0f, tween(150), label = "headerFade")
+    val topInset = androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(androidx.compose.ui.platform.LocalDensity.current)
     androidx.compose.material3.Surface(
         modifier = modifier.fillMaxWidth().drawBehind {
             // list content dissolves under the header instead of being cut off by a hard line
             val h = 18.dp.toPx()
             drawRect(
-                Brush.verticalGradient(listOf(background.copy(alpha = fade), Color.Transparent), startY = size.height, endY = size.height + h),
+                Brush.verticalGradient(listOf(background.copy(alpha = stuck()), Color.Transparent), startY = size.height, endY = size.height + h),
                 topLeft = Offset(0f, size.height), size = Size(size.width, h),
             )
         },
         color = background,
     ) {
         Column(
-            (if (stuck) Modifier.statusBarsPadding() else Modifier).padding(horizontal = 16.dp, vertical = 8.dp),
+            Modifier
+                .layout { measurable, constraints ->
+                    val inset = (topInset * stuck()).toInt()
+                    val placeable = measurable.measure(constraints)
+                    layout(placeable.width, placeable.height + inset) { placeable.place(0, inset) }
+                }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content,
         )
@@ -322,11 +337,21 @@ fun EdgeFade(modifier: Modifier = Modifier, fromTop: Boolean) {
     Box(modifier.fillMaxWidth().background(Brush.verticalGradient(if (fromTop) colors else colors.reversed())))
 }
 
-/** True once the item at [index] has reached the top of the list. */
+/** 0..1: how far the item at [index] has travelled into the status bar area at the top of the list. */
 @Composable
-fun rememberStuck(state: androidx.compose.foundation.lazy.LazyListState, index: Int): Boolean {
-    val stuck by remember(state, index) { androidx.compose.runtime.derivedStateOf { state.firstVisibleItemIndex >= index } }
-    return stuck
+fun rememberStuck(state: androidx.compose.foundation.lazy.LazyListState, index: Int): () -> Float {
+    val topInset = androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(androidx.compose.ui.platform.LocalDensity.current).coerceAtLeast(1)
+    val fraction = remember(state, index, topInset) {
+        androidx.compose.runtime.derivedStateOf {
+            val info = state.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+            when {
+                info != null -> (1f - info.offset / topInset.toFloat()).coerceIn(0f, 1f)
+                state.firstVisibleItemIndex > index -> 1f
+                else -> 0f
+            }
+        }
+    }
+    return { fraction.value }
 }
 
 /** Pill shaped search field with a search icon and a clear button. */

@@ -110,6 +110,7 @@
     <string name="sync_interval">Interval</string>
     <string name="sync_log">Sync log</string>
     <string name="sync_now">Sync now</string>
+    <string name="dismiss">Dismiss</string>
     <string name="synced_ago">Synced %1$s</string>
     <string name="syncing">Syncing</string>
     <string name="tab_home">Home</string>
