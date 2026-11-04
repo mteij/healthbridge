@@ -113,7 +113,7 @@ fun HomeScreen(vm: AppViewModel, onWorkout: (String) -> Unit, onWorkouts: () -> 
     val day = selected.coerceIn(0, (steps.size - 1).coerceAtLeast(0))
     val date = steps.getOrNull(day)?.date
     val age = prefsVersion.let { HealthMath.age(Graph.prefs.birthYear) }
-    val goal = HealthMath.stepGoal(age, steps.dropLast(1).map { it.value })
+    val goal = HealthMath.stepGoal(age, steps.dropLast(1).mapNotNull { it.value })
     val night = data?.sleep?.firstOrNull { it.date == date }
     val dayWorkouts = data?.recentWorkouts.orEmpty().filter { localDate(it.start) == date }
     val measurements = data?.measurements.orEmpty().filter { it.value != null }.associateBy { it.metric }
