@@ -102,12 +102,32 @@ def sleep_sessions(userid, cipher, start_date, end_date, tz_name=None):
             stages[name] = stages.get(name, 0) + seconds
         asleep = sum(v for k, v in stages.items() if k in ("sleeping", "light", "deep", "rem"))
         out.append({
-            "date": wake_day.isoformat(), "start": doc["start"], "end": doc["end"], "source": doc.get("app"),
+            "id": doc.get("id") or doc["_id"], "date": wake_day.isoformat(), "start": doc["start"], "end": doc["end"], "source": doc.get("app"),
             "in_bed_min": round((end - start).total_seconds() / 60),
             "asleep_min": round(asleep / 60) if stages else None,
             "stages_min": {k: round(v / 60) for k, v in stages.items()},
         })
-    return out
+    return _one_night_each(out)
+
+
+MANUAL_SLEEP_SOURCE = "healthbridge.manual"
+
+
+def _one_night_each(nights):
+    """The same night often arrives from several apps. Keep one per overlapping group: a night the user
+    entered by hand wins, then the one with sleep stages, then the longest."""
+    def span(n):
+        return parse_iso(n["start"]), parse_iso(n["end"] or n["start"])
+
+    def rank(n):
+        return (n["source"] == MANUAL_SLEEP_SOURCE, bool(n["stages_min"]), n["in_bed_min"])
+
+    kept = []
+    for night in sorted(nights, key=rank, reverse=True):
+        a0, a1 = span(night)
+        if not any(min(a1, b1) > max(a0, b0) for b0, b1 in map(span, kept)):
+            kept.append(night)
+    return sorted(kept, key=lambda n: n["start"])
 
 
 def measurement_series(userid, cipher, name, start_date, end_date, tz_name=None):

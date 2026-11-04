@@ -15,6 +15,11 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import nl.mteij.healthbridge.data.SleepNight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +39,10 @@ fun SleepScreen(vm: AppViewModel, onBack: () -> Unit, modifier: Modifier = Modif
     LaunchedEffect(Unit) { vm.loadSleep() }
     val nights = state.value.orEmpty().sortedBy { it.date }
     val last = nights.lastOrNull()
+    var editing by remember { mutableStateOf<SleepNight?>(null) }
+    var adding by remember { mutableStateOf(false) }
+    if (adding) SleepEditor(vm, null) { adding = false }
+    editing?.let { night -> SleepEditor(vm, night) { editing = null } }
 
     LazyColumn(modifier, contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
@@ -41,6 +50,9 @@ fun SleepScreen(vm: AppViewModel, onBack: () -> Unit, modifier: Modifier = Modif
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
                 Text(stringResource(R.string.sleep), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
+        }
+        item {
+            OutlinedButton(onClick = { adding = true }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.sleep_add)) }
         }
         if (last == null) {
             item { Text(state.error ?: stringResource(R.string.no_sleep), color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -72,10 +84,13 @@ fun SleepScreen(vm: AppViewModel, onBack: () -> Unit, modifier: Modifier = Modif
             }
         }
         items(nights.reversed(), key = { it.start }) { night ->
-            ElevatedSection(Modifier.fillMaxWidth()) {
+            ElevatedSection(Modifier.fillMaxWidth(), onClick = { editing = night }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row {
                         Text(night.date, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                        if (night.source == MANUAL_SLEEP_SOURCE) {
+                            Text(stringResource(R.string.entered_by_hand), Modifier.padding(end = 12.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Text(night.asleepMin?.let { hoursMinutes(it) } ?: "–", style = MaterialTheme.typography.titleSmall, color = MetricColor.sleep)
                     }
                     SleepStageStrip(night)

@@ -125,3 +125,16 @@ def test_moving_time_pauses_best_efforts_laps_and_route(client, session):
     assert w["segments"][0]["type"] == "running"
     detail = client.get("/api/v2/workouts/r1", headers=auth(key)).get_json()
     assert len(detail["route"]) == 12 and len(detail["pauses"]) == 1
+
+
+def test_manual_sleep_replaces_the_same_night_from_another_app(client, session):
+    t = session["token"]
+    client.post("/api/v2/sync/sleepSession", headers=auth(t), json={"data": [
+        {"metadata": {"id": "hc", "dataOrigin": "watch"}, "startTime": "2026-10-19T22:30:00Z", "endTime": "2026-10-20T06:30:00Z",
+         "stages": [{"startTime": "2026-10-19T22:30:00Z", "endTime": "2026-10-20T06:30:00Z", "stage": 4}]},
+        {"metadata": {"id": "manual-2026-10-20", "dataOrigin": "healthbridge.manual"}, "startTime": "2026-10-19T23:00:00Z",
+         "endTime": "2026-10-20T07:00:00Z"},
+        {"metadata": {"id": "other-night", "dataOrigin": "watch"}, "startTime": "2026-10-20T22:00:00Z", "endTime": "2026-10-21T06:00:00Z"}]})
+    key = client.post("/api/v2/apikeys", json={"name": "k"}, headers=auth(t)).get_json()["key"]
+    nights = client.get("/api/v2/sleep?from=2026-10-19&to=2026-10-22&tz=UTC", headers=auth(key)).get_json()
+    assert [n["id"] for n in nights] == ["manual-2026-10-20", "other-night"]

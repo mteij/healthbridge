@@ -85,6 +85,8 @@ data class Measurement(val metric: String, val value: Double? = null, val unit: 
 
 @Serializable
 data class SleepNight(
+    val id: String? = null,
+    val source: String? = null,
     val date: String,
     val start: String,
     val end: String? = null,

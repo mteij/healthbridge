@@ -151,4 +151,16 @@
     <string name="route">Route</string>
     <string name="altitude">Altitude</string>
     <string name="unit_spm">spm</string>
+    <string name="sleep_add">Add night</string>
+    <string name="sleep_edit">Edit night</string>
+    <string name="bedtime">Bedtime</string>
+    <string name="wake_up">Wake-up</string>
+    <string name="sleep_suggested">Suggested from when your screen was off. Adjust if needed.</string>
+    <string name="sleep_usage_access">Allow usage access for a suggestion based on your screen</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="entered_by_hand">Entered by hand</string>
+    <string name="save_failed">Could not save the night</string>
+    <string name="setup_route_title">Allow reading GPS routes of workouts</string>
 </resources>

@@ -154,6 +154,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return key
     }
 
+    /** A night entered by hand is stored as a sleep session from the "healthbridge.manual" source, one per wake-up day. */
+    fun saveManualSleep(start: java.time.Instant, end: java.time.Instant, onDone: (Throwable?) -> Unit) {
+        val wakeDay = end.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        val record = kotlinx.serialization.json.buildJsonObject {
+            put("metadata", kotlinx.serialization.json.buildJsonObject {
+                put("id", kotlinx.serialization.json.JsonPrimitive("manual-$wakeDay"))
+                put("dataOrigin", kotlinx.serialization.json.JsonPrimitive(MANUAL_SLEEP_SOURCE))
+            })
+            put("startTime", kotlinx.serialization.json.JsonPrimitive(start.toString()))
+            put("endTime", kotlinx.serialization.json.JsonPrimitive(end.toString()))
+            put("stages", kotlinx.serialization.json.JsonArray(emptyList()))
+        }
+        viewModelScope.launch {
+            val failure = runCatching { Graph.api.upload("sleepSession", listOf(record)) }.exceptionOrNull()
+            if (failure == null) { loadedAt.clear(); loadSleep(force = true); loadOverview(force = true) }
+            onDone(failure)
+        }
+    }
+
+    fun deleteManualSleep(id: String) {
+        viewModelScope.launch {
+            runCatching { Graph.api.delete("sleepSession", listOf(id)) }
+            loadedAt.clear(); loadSleep(force = true); loadOverview(force = true)
+        }
+    }
+
     fun loadSleep(force: Boolean = false) {
         val to = LocalDate.now()
         load(
@@ -222,3 +248,5 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun reschedule() = SyncScheduler.schedule(getApplication(), Graph.prefs)
 }
+
+const val MANUAL_SLEEP_SOURCE = "healthbridge.manual"

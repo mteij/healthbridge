@@ -151,4 +151,16 @@
     <string name="route">Route</string>
     <string name="altitude">Hoogte</string>
     <string name="unit_spm">spm</string>
+    <string name="sleep_add">Nacht toevoegen</string>
+    <string name="sleep_edit">Nacht aanpassen</string>
+    <string name="bedtime">Bedtijd</string>
+    <string name="wake_up">Wakker</string>
+    <string name="sleep_suggested">Voorgesteld op basis van wanneer je scherm uit was. Pas aan waar nodig.</string>
+    <string name="sleep_usage_access">Geef toegang tot gebruiksgegevens voor een voorstel op basis van je scherm</string>
+    <string name="save">Opslaan</string>
+    <string name="cancel">Annuleren</string>
+    <string name="delete">Verwijderen</string>
+    <string name="entered_by_hand">Handmatig ingevoerd</string>
+    <string name="save_failed">Opslaan mislukt</string>
+    <string name="setup_route_title">Sta het lezen van GPS-routes van workouts toe</string>
 </resources>
