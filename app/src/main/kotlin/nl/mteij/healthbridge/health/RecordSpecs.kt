@@ -283,6 +283,6 @@ object RecordSpecs {
     val permissions: Set<String> =
         all.map { it.readPermission }.toSet() +
             HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY +
-            HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND +
-            HealthAccess.routePermission
+            HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
+    // the GPS route permission is requested on its own: Health Connect versions that do not know it must not affect the rest
 }

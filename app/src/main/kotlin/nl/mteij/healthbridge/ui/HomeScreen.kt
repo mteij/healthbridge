@@ -47,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -99,13 +100,18 @@ fun HomeScreen(vm: AppViewModel, onWorkout: (String) -> Unit, onWorkouts: () -> 
         }
     }
     val permissionLauncher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { vm.refreshHealth() }
+    var routeUnsupported by remember { mutableStateOf(false) }
+    val routeLauncher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { granted ->
+        routeUnsupported = HealthAccess.routePermission !in granted
+        vm.refreshHealth()
+    }
 
     val power = context.getSystemService(PowerManager::class.java)
     val batteryOk = power.isIgnoringBatteryOptimizations(context.packageName)
     val dataGranted = RecordSpecs.all.any { it.readPermission in health.granted }
     val backgroundGranted = HealthAccess.backgroundPermission in health.granted && health.backgroundSupported
     val routeGranted = HealthAccess.routePermission in health.granted
-    val setupDone = health.status == HealthStatus.AVAILABLE && dataGranted && backgroundGranted && batteryOk && routeGranted
+    val setupDone = health.status == HealthStatus.AVAILABLE && dataGranted && backgroundGranted && batteryOk
 
     val data = overview.value
     val steps = data?.daily?.get("steps").orEmpty()
@@ -174,14 +180,27 @@ fun HomeScreen(vm: AppViewModel, onWorkout: (String) -> Unit, onWorkouts: () -> 
                             stringResource(R.string.setup_bg_action),
                             health.status == HealthStatus.AVAILABLE && health.backgroundSupported,
                         ) { permissionLauncher.launch(setOf(HealthAccess.backgroundPermission, HealthAccess.historyPermission)) }
-                        SetupRow(routeGranted, stringResource(R.string.setup_route_title), stringResource(R.string.setup_perm_action), health.status == HealthStatus.AVAILABLE) {
-                            permissionLauncher.launch(setOf(HealthAccess.routePermission))
-                        }
                         SetupRow(batteryOk, stringResource(R.string.setup_battery_title), stringResource(R.string.setup_battery_action)) {
                             val request = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
                             runCatching { context.startActivity(request) }.onFailure {
                                 context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // optional: GPS routes need a Health Connect that knows this permission, so it does not block the setup above
+        if (!routeGranted && health.status == HealthStatus.AVAILABLE && dataGranted) {
+            item {
+                ElevatedSection(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SetupRow(false, stringResource(R.string.setup_route_title), stringResource(R.string.setup_perm_action)) {
+                            routeLauncher.launch(setOf(HealthAccess.routePermission))
+                        }
+                        if (routeUnsupported) {
+                            Text(stringResource(R.string.route_unsupported), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
