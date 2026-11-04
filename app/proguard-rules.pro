@@ -14,3 +14,8 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
+# WorkManager's Room database is created reflectively at startup; without these the app dies on launch
+# with NoSuchMethodException: androidx.work.impl.WorkDatabase_Impl.<init>.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
+-keep class androidx.work.impl.WorkDatabase_Impl { *; }
+-keep class * extends androidx.work.ListenableWorker { <init>(android.content.Context, androidx.work.WorkerParameters); }
