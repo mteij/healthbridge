@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -51,6 +52,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import nl.mteij.healthbridge.R
+import nl.mteij.healthbridge.data.HealthMath
 import nl.mteij.healthbridge.data.SeriesPoint
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -66,7 +68,8 @@ private enum class Metric(val key: String, val label: Int, val color: Color, val
     CALORIES("active_calories", R.string.active_calories, MetricColor.calories, Icons.Rounded.LocalFireDepartment, true),
     SLEEP("sleep", R.string.sleep, MetricColor.sleep, Icons.Rounded.Bedtime, false),
     WEIGHT("weight", R.string.m_weight, MetricColor.weight, Icons.Rounded.MonitorWeight, false),
-    RESTING_HR("resting_heart_rate", R.string.m_resting_hr, MetricColor.heart, Icons.Rounded.MonitorHeart, false);
+    RESTING_HR("resting_heart_rate", R.string.m_resting_hr, MetricColor.heart, Icons.Rounded.MonitorHeart, false),
+    VO2_MAX("vo2_max", R.string.vo2_max, MetricColor.heart, Icons.Rounded.Air, false);
 
     /** Chart and summary unit; distance arrives in metres and is shown in kilometres. */
     fun scale(value: Double) = if (this == DISTANCE) value / 1000 else value
@@ -77,6 +80,7 @@ private enum class Metric(val key: String, val label: Int, val color: Color, val
         SLEEP -> hoursMinutes((value * 60).toInt())
         WEIGHT -> number(value, 1) + " kg"
         RESTING_HR -> number(value) + " bpm"
+        VO2_MAX -> number(value, 1)
     }
 }
 
@@ -96,7 +100,7 @@ private fun statOf(metric: Metric, points: List<SeriesPoint>): Stat {
     if (values.isEmpty()) return Stat(null, null, null, 0)
     return when {
         metric.cumulative -> Stat(values.sum(), values.average(), values.max(), values.size)
-        metric == Metric.WEIGHT -> Stat(values.last(), values.average(), values.max(), values.size)
+        metric == Metric.WEIGHT || metric == Metric.VO2_MAX -> Stat(values.last(), values.average(), values.max(), values.size)
         else -> Stat(values.average(), values.average(), values.max(), values.size)
     }
 }
@@ -121,9 +125,21 @@ fun TrendsScreen(vm: AppViewModel) {
         vm.loadTrend(metric.key, prevFrom, prevTo, force = refreshes > 0)
     }
     val current = trends[currentKey]
-    val points = current?.value.orEmpty()
+    // without a measured VO2 max, estimate it from the user's runs
+    val workouts by vm.workouts.collectAsState()
+    val overview by vm.overview.collectAsState()
+    LaunchedEffect(Unit) { vm.loadWorkouts(); vm.loadOverview() }
+    val estimates = remember(workouts.value, overview.value) {
+        val rest = overview.value?.measurements?.firstOrNull { it.metric == "resting_heart_rate" }?.value
+        HealthMath.runEstimates(workouts.value.orEmpty(), rest, vm.maxHr()).map { SeriesPoint(it.first, it.second) }
+    }
+    fun series(key: String, f: LocalDate, t: LocalDate): List<SeriesPoint> {
+        val measured = trends[key]?.value.orEmpty()
+        return if (metric == Metric.VO2_MAX && measured.isEmpty()) estimates.filter { it.date >= f.toString() && it.date <= t.toString() } else measured
+    }
+    val points = series(currentKey, from, to)
     val stat = statOf(metric, points)
-    val previous = statOf(metric, trends[previousKey]?.value.orEmpty())
+    val previous = statOf(metric, series(previousKey, prevFrom, prevTo))
     val listState = rememberLazyListState()
 
     LazyColumn(Modifier, listState, contentPadding = PaddingValues(bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -141,20 +157,23 @@ fun TrendsScreen(vm: AppViewModel) {
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Period.entries.forEachIndexed { i, p ->
-                            FilterChip(
-                                selected = i == periodIndex, onClick = { periodIndex = i; offset = 0 },
-                                label = { Text(stringResource(when (p) { Period.WEEK -> R.string.period_week; Period.MONTH -> R.string.period_month; Period.YEAR -> R.string.period_year })) },
-                            )
-                        }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Period.entries.forEachIndexed { i, p ->
+                        FilterChip(
+                            selected = i == periodIndex, onClick = { periodIndex = i; offset = 0 },
+                            label = { Text(stringResource(when (p) { Period.WEEK -> R.string.period_week; Period.MONTH -> R.string.period_month; Period.YEAR -> R.string.period_year }), maxLines = 1, softWrap = false) },
+                        )
                     }
-                    IconButton(onClick = { offset-- }) { Icon(Icons.Rounded.ChevronLeft, stringResource(R.string.back)) }
-                    Text(rangeLabel(period, from, to), style = MaterialTheme.typography.labelLarge)
-                    IconButton(onClick = { offset++ }, enabled = offset < 0) { Icon(Icons.Rounded.ChevronRight, null) }
                 }
                 if (current?.refreshing == true) LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+        }
+
+        item {
+            Row(Modifier.padding(horizontal = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { offset-- }) { Icon(Icons.Rounded.ChevronLeft, stringResource(R.string.back)) }
+                Text(rangeLabel(period, from, to), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
+                IconButton(onClick = { offset++ }, enabled = offset < 0) { Icon(Icons.Rounded.ChevronRight, null) }
             }
         }
 
@@ -195,11 +214,11 @@ fun TrendsScreen(vm: AppViewModel) {
                 Column(Modifier.padding(20.dp)) {
                     if (points.isEmpty() && current?.refreshing != true) {
                         Text(stringResource(R.string.no_data_period), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else if (metric == Metric.WEIGHT || metric == Metric.RESTING_HR) {
+                    } else if (metric == Metric.WEIGHT || metric == Metric.RESTING_HR || metric == Metric.VO2_MAX) {
                         if (points.size >= 2) {
                             LineChart(
                                 points.map { LocalDate.parse(it.date).toEpochDay().toDouble() to it.value }, metric.color,
-                                format = { number(it, if (metric == Metric.WEIGHT) 1 else 0) },
+                                format = { number(it, if (metric == Metric.WEIGHT || metric == Metric.VO2_MAX) 1 else 0) },
                                 xFormat = { java.time.format.DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()).format(LocalDate.ofEpochDay(it.toLong())) },
                             )
                         } else {

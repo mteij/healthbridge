@@ -130,4 +130,11 @@
     <string name="zone_peak">Peak</string>
     <string name="zone_vigorous">Vigorous</string>
     <string name="zones_need_profile">Add your birth year to see heart rate zones</string>
+    <string name="vo2_max">VO2 max</string>
+    <string name="vo2_device">Measured by your watch or app</string>
+    <string name="vo2_runs">Estimated from your runs</string>
+    <string name="vo2_hr">Estimated from your heart rates</string>
+    <string name="vo2_vs_earlier">per 5 runs</string>
+    <string name="vo2_note">Estimates are rough; they get better the more runs with heart rate you record</string>
+    <string name="vo2_unit">ml/kg/min</string>
 </resources>

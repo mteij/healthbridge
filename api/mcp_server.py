@@ -11,7 +11,7 @@ import os
 from flask import Blueprint, g, jsonify, request
 
 import db
-from aggregate import build_workout, type_name
+from aggregate import build_workout, dedupe_workouts, type_name
 from apiVersions.v2.auth import API_KEY_PREFIX, hash_key
 from apiVersions.v2.records import decrypt_docs
 from apiVersions.v2.workouts import load_sessions, series_for
@@ -106,16 +106,16 @@ def _downsample(points, limit=120):
 
 
 def _workouts(userid, cipher, query, limit, wanted=None, samples=False):
-    sessions = decrypt_docs(load_sessions(userid, query, limit), cipher)
+    sessions = decrypt_docs(load_sessions(userid, query, limit * 2), cipher)
+    built = dedupe_workouts([build_workout(s, series_for(userid, s, cipher), samples) for s in sessions])
     out = []
-    for session in sessions:
-        if wanted and type_name(session["data"].get("exerciseType")) != wanted.lower():
+    for w in built:
+        if wanted and w["type"] != wanted.lower():
             continue
-        w = build_workout(session, series_for(userid, session, cipher), samples)
         if samples:
             w["samples"] = {k: _downsample(v) for k, v in w["samples"].items()}
         out.append(w)
-    return out
+    return out[:limit]
 
 
 def tool_list_workouts(userid, cipher, args):

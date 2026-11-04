@@ -35,7 +35,12 @@ object HealthMath {
      * off around 6,000-8,000 steps for adults 60+ and 8,000-10,000 for younger adults (ranges as reported
      * by secondary coverage). The lower end of each range is used.
      */
-    fun stepGoal(age: Int?): Int = if (age != null && age >= 60) 6000 else 8000
+    fun stepGoal(age: Int?, recentDays: List<Double> = emptyList()): Int {
+        val base = if (age != null && age >= 60) 6000 else 8000
+        // someone who already walks more than the baseline gets a goal slightly above their own median day
+        val median = recentDays.filter { it > 0 }.sorted().let { if (it.size >= 4) it[it.size / 2] else null }
+        return if (median != null && median > base) minOf((median * 1.1 / 500).roundToInt() * 500, 15000) else base
+    }
 
     fun bmi(weightKg: Double, heightM: Double): Double = weightKg / (heightM * heightM)
 
@@ -55,5 +60,57 @@ object HealthMath {
             else -> return null
         }
         return (10 * weightKg + 6.25 * heightCm - 5 * age + offset).roundToInt()
+    }
+
+    // ---- VO2 max ----
+
+    enum class Vo2Source { DEVICE, RUNS, HEART_RATES }
+
+    class Vo2(val value: Double, val source: Vo2Source, val change: Double? = null)
+
+    /**
+     * Uth et al. 2004: VO2max = 15.3 x HRmax / HRrest (ml/kg/min). Needs nothing but two heart rates,
+     * but is rough (about 10 % error) and ignores training, so it is only the fallback.
+     */
+    fun vo2FromHeartRates(maxHr: Int, restHr: Double): Double? =
+        (15.3 * maxHr / restHr).takeIf { restHr in 30.0..110.0 && it in 15.0..90.0 }
+
+    /**
+     * One steady run -> VO2max. ACSM running equation: VO2 = 0.2 x speed (m/min) + 3.5 ml/kg/min on the flat.
+     * Swain 1997: the share of heart rate reserve used equals the share of VO2 reserve, so
+     * VO2max = 3.5 + 0.2 x speed / %HRR. Only runs that are long enough, fast enough to be running
+     * and hard enough (50-95 % of reserve) give a trustworthy figure.
+     */
+    fun vo2FromRun(speedMps: Double, avgHr: Int, restHr: Double, maxHr: Int): Double? {
+        if (maxHr <= restHr) return null
+        val reserve = (avgHr - restHr) / (maxHr - restHr)
+        if (reserve !in 0.5..0.95 || speedMps !in 2.2..6.5) return null
+        return (3.5 + 0.2 * speedMps * 60 / reserve).takeIf { it in 15.0..80.0 }
+    }
+
+    /** Date (yyyy-MM-dd, oldest first) and VO2max estimate for every qualifying run. */
+    fun runEstimates(workouts: List<Workout>, restHr: Double?, maxHr: Int?): List<Pair<String, Double>> {
+        if (restHr == null || maxHr == null) return emptyList()
+        return workouts.filter { it.type == "running" && it.durationS >= 600 }.mapNotNull { w ->
+            val speed = w.avgSpeedMps ?: return@mapNotNull null
+            val hr = w.heartRate?.avg ?: return@mapNotNull null
+            val date = runCatching { java.time.Instant.parse(w.start).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString() }.getOrNull()
+            val vo2 = vo2FromRun(speed, hr, restHr, maxHr)
+            if (date != null && vo2 != null) date to vo2 else null
+        }.sortedBy { it.first }
+    }
+
+    /** The figure shown: a device measurement if there is one, else the median of the latest runs, else the heart rate formula. */
+    fun vo2(measured: Double?, workouts: List<Workout>, restHr: Double?, maxHr: Int?): Vo2? {
+        if (measured != null) return Vo2(measured, Vo2Source.DEVICE)
+        val runs = runEstimates(workouts, restHr, maxHr).map { it.second }
+        if (runs.isNotEmpty()) {
+            fun median(l: List<Double>) = l.sorted()[l.size / 2]
+            val recent = runs.takeLast(5)
+            val earlier = runs.dropLast(5).takeLast(5)
+            return Vo2(median(recent), Vo2Source.RUNS, if (earlier.size >= 2) median(recent) - median(earlier) else null)
+        }
+        if (maxHr != null && restHr != null) vo2FromHeartRates(maxHr, restHr)?.let { return Vo2(it, Vo2Source.HEART_RATES) }
+        return null
     }
 }

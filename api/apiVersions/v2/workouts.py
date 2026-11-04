@@ -7,7 +7,7 @@ from blueprint import v2
 from crypto import data_cipher
 from apiVersions.v2.records import decrypt_docs
 from timeutil import canonical, parse_iso, to_iso
-from aggregate import build_workout, type_name
+from aggregate import build_workout, dedupe_workouts, type_name
 
 log = logging.getLogger("healthbridge.workouts")
 
@@ -63,18 +63,16 @@ def workouts():
 
     user = db.users().find_one({"_id": g.user})
     cipher = data_cipher(user)
-    sessions = decrypt_docs(load_sessions(g.user, query, limit), cipher)
+    # fetch extra: copies of one session from several apps are merged below
+    sessions = decrypt_docs(load_sessions(g.user, query, limit * 2), cipher)
 
     from apiVersions.v2.overview import max_hr_arg
     max_hr = max_hr_arg()
     wanted = args.get("type")
     include_samples = args.get("samples") in ("1", "true")
-    out = []
-    for session in sessions:
-        if wanted and type_name(session["data"].get("exerciseType")) != wanted.lower():
-            continue
-        out.append(build_workout(session, series_for(g.user, session, cipher), include_samples, max_hr))
-    return jsonify(out), 200
+    built = [build_workout(session, series_for(g.user, session, cipher), include_samples, max_hr) for session in sessions]
+    out = [w for w in dedupe_workouts(built) if not wanted or w["type"] == wanted.lower()]
+    return jsonify(out[:limit]), 200
 
 
 @v2.get("/workouts/<workout_id>")

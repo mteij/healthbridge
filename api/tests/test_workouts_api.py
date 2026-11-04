@@ -76,3 +76,21 @@ def test_week_minutes_and_series_endpoints(client, session):
     points = client.get(f"/api/v2/series?name=weight&from={today}&to={today}&tz=UTC", headers=auth(key)).get_json()
     assert points == [{"date": today, "value": 78.4, "unit": "kg"}]
     assert client.get("/api/v2/series?name=nope&from=2026-01-01&to=2026-01-02", headers=auth(key)).status_code == 400
+
+
+def test_same_session_from_two_apps_is_listed_once(client, session):
+    t = session["token"]
+    client.post("/api/v2/sync/exerciseSession", headers=auth(t), json={"data": [
+        {"metadata": {"id": "samsung1", "dataOrigin": "samsung"}, "startTime": "2026-10-20T10:00:00Z",
+         "endTime": "2026-10-20T10:31:00Z", "exerciseType": 56},
+        {"metadata": {"id": "strava1", "dataOrigin": "strava"}, "startTime": "2026-10-20T10:00:30Z",
+         "endTime": "2026-10-20T10:30:00Z", "exerciseType": 56, "title": "Morning run"},
+        {"metadata": {"id": "later", "dataOrigin": "strava"}, "startTime": "2026-10-20T18:00:00Z",
+         "endTime": "2026-10-20T18:20:00Z", "exerciseType": 56}]})
+    client.post("/api/v2/sync/distance", headers=auth(t), json={"data": [
+        {"metadata": {"id": "d1", "dataOrigin": "strava"}, "startTime": "2026-10-20T10:00:30Z",
+         "endTime": "2026-10-20T10:30:00Z", "distance": {"value": 5, "unit": "kilometers"}}]})
+    key = client.post("/api/v2/apikeys", json={"name": "k"}, headers=auth(t)).get_json()["key"]
+    res = client.get("/api/v2/workouts", headers=auth(key)).get_json()
+    assert sorted(w["id"] for w in res) == ["later", "strava1"]
+    assert next(w for w in res if w["id"] == "strava1")["distance_m"] == 5000

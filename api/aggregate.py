@@ -237,6 +237,33 @@ def build_workout(session, series, include_samples=False, max_hr=None):
     return workout
 
 
+def _richness(w):
+    """How much a workout record knows; the fullest copy wins when two apps report the same session."""
+    keys = ("distance_m", "heart_rate", "active_kcal", "total_kcal", "steps", "elevation_gain_m", "avg_speed_mps")
+    return sum(w.get(k) is not None for k in keys) * 10 + (5 if w.get("title") else 0) + (1 if w.get("notes") else 0)
+
+
+def dedupe_workouts(workouts, min_overlap=0.7):
+    """Drop copies of the same session written by different apps (Strava and Samsung Health both
+    exporting one run). Two workouts are one session when they overlap for at least `min_overlap`
+    of the shorter one; a person cannot do two workouts at once. Input order is kept."""
+    spans = [(parse_iso(w["start"]), parse_iso(w["end"])) for w in workouts]
+    order = sorted(range(len(workouts)), key=lambda i: (-_richness(workouts[i]), -workouts[i]["duration_s"], i))
+    kept = []
+    for i in order:
+        start, end = spans[i]
+        shorter = lambda j: min((end - start).total_seconds(), (spans[j][1] - spans[j][0]).total_seconds())
+        duplicate = False
+        for j in kept:
+            overlap = (min(end, spans[j][1]) - max(start, spans[j][0])).total_seconds()
+            if overlap > 0 and overlap >= min_overlap * max(shorter(j), 1):
+                duplicate = True
+                break
+        if not duplicate:
+            kept.append(i)
+    return [workouts[i] for i in sorted(kept)]
+
+
 def _round(value, digits=1):
     if value is None:
         return None

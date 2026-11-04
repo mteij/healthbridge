@@ -130,4 +130,11 @@
     <string name="zone_peak">Maximaal</string>
     <string name="zone_vigorous">Zwaar</string>
     <string name="zones_need_profile">Vul je geboortejaar in om hartslagzones te zien</string>
+    <string name="vo2_max">VO2 max</string>
+    <string name="vo2_device">Gemeten door je horloge of app</string>
+    <string name="vo2_runs">Geschat uit je hardlooprondes</string>
+    <string name="vo2_hr">Geschat uit je hartslagen</string>
+    <string name="vo2_vs_earlier">tov eerdere runs</string>
+    <string name="vo2_note">Schattingen zijn grof; ze worden beter met meer hardloopsessies met hartslag</string>
+    <string name="vo2_unit">ml/kg/min</string>
 </resources>

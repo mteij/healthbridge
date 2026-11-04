@@ -86,6 +86,8 @@ fun HomeScreen(vm: AppViewModel, onWorkout: (String) -> Unit, onWorkouts: () -> 
     var selected by remember { mutableIntStateOf(6) }
 
     val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val workoutList by vm.workouts.collectAsState()
+    LaunchedEffect(Unit) { vm.loadWorkouts() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         vm.refreshHealth()
         vm.loadOverview()
@@ -111,7 +113,7 @@ fun HomeScreen(vm: AppViewModel, onWorkout: (String) -> Unit, onWorkouts: () -> 
     val day = selected.coerceIn(0, (steps.size - 1).coerceAtLeast(0))
     val date = steps.getOrNull(day)?.date
     val age = prefsVersion.let { HealthMath.age(Graph.prefs.birthYear) }
-    val goal = HealthMath.stepGoal(age)
+    val goal = HealthMath.stepGoal(age, steps.dropLast(1).map { it.value })
     val night = data?.sleep?.firstOrNull { it.date == date }
     val dayWorkouts = data?.recentWorkouts.orEmpty().filter { localDate(it.start) == date }
     val measurements = data?.measurements.orEmpty().filter { it.value != null }.associateBy { it.metric }
@@ -231,6 +233,14 @@ fun HomeScreen(vm: AppViewModel, onWorkout: (String) -> Unit, onWorkouts: () -> 
             item { BodyCard(measurements, age, Modifier.padding(horizontal = 16.dp)) }
         }
 
+        // fitness level
+        item {
+            val vo2 = remember(workoutList.value, data, prefsVersion) {
+                HealthMath.vo2(measurements["vo2_max"]?.value, workoutList.value.orEmpty(), measurements["resting_heart_rate"]?.value, vm.maxHr())
+            }
+            if (vo2 != null) Vo2Card(vo2, Modifier.padding(horizontal = 16.dp))
+        }
+
         // workouts of the selected day
         item {
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -332,6 +342,36 @@ private fun BodyCard(measurements: Map<String, Measurement>, age: Int?, modifier
                     Text("${number(it)} bpm", style = MaterialTheme.typography.titleLarge, color = MetricColor.heart)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun Vo2Card(vo2: HealthMath.Vo2, modifier: Modifier) {
+    ElevatedSection(modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.vo2_max).uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(number(vo2.value, 1), style = MaterialTheme.typography.headlineLarge, color = MetricColor.heart, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.vo2_unit), Modifier.padding(bottom = 6.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                vo2.change?.let {
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "${if (it >= 0) "+" else "−"}${number(kotlin.math.abs(it), 1)} ${stringResource(R.string.vo2_vs_earlier)}",
+                        Modifier.padding(bottom = 6.dp), style = MaterialTheme.typography.labelMedium,
+                        color = if (it >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Text(
+                stringResource(when (vo2.source) {
+                    HealthMath.Vo2Source.DEVICE -> R.string.vo2_device
+                    HealthMath.Vo2Source.RUNS -> R.string.vo2_runs
+                    HealthMath.Vo2Source.HEART_RATES -> R.string.vo2_hr
+                }),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

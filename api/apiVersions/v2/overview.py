@@ -6,7 +6,7 @@ from flask import g, jsonify, request
 
 import db
 from timeutil import to_iso
-from aggregate import build_workout
+from aggregate import build_workout, dedupe_workouts
 from apiVersions.v2.records import decrypt_docs
 from apiVersions.v2.workouts import load_sessions, series_for
 from blueprint import v2
@@ -51,8 +51,8 @@ def overview():
     today = datetime.datetime.now(_tz(tz)).date()
     week_start = today - datetime.timedelta(days=6)
     max_hr = max_hr_arg()
-    sessions = decrypt_docs(load_sessions(g.user, {}, 10), cipher)
-    workouts = [build_workout(s, series_for(g.user, s, cipher), max_hr=max_hr) for s in sessions]
+    sessions = decrypt_docs(load_sessions(g.user, {}, 20), cipher)
+    workouts = dedupe_workouts([build_workout(s, series_for(g.user, s, cipher), max_hr=max_hr) for s in sessions])[:10]
     week_cutoff = to_iso(datetime.datetime.combine(week_start, datetime.time.min, _tz(tz)))
     week = [w for w in workouts if w["start"] >= week_cutoff]
     return jsonify({
