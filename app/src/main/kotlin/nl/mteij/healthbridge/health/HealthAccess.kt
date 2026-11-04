@@ -38,5 +38,7 @@ object HealthAccess {
     }
 
     val backgroundPermission = HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
+    /** Needed to read the GPS track of a workout; without it Health Connect only reports that consent is required. */
+    const val routePermission = "android.permission.health.READ_EXERCISE_ROUTES"
     val historyPermission = HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY
 }

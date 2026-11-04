@@ -94,3 +94,34 @@ def test_same_session_from_two_apps_is_listed_once(client, session):
     res = client.get("/api/v2/workouts", headers=auth(key)).get_json()
     assert sorted(w["id"] for w in res) == ["later", "strava1"]
     assert next(w for w in res if w["id"] == "strava1")["distance_m"] == 5000
+
+
+def test_moving_time_pauses_best_efforts_laps_and_route(client, session):
+    t = session["token"]
+    base = "2026-10-20T10:"
+    # 12 minutes at 3.3 m/s, stopped 60 s in the middle (no samples for a while), then moving again
+    speed = [{"time": f"{base}{m:02d}:{s:02d}Z", "speed": {"inMetersPerSecond": 3.3}}
+             for m in range(0, 5) for s in range(0, 60, 5)]
+    speed += [{"time": f"{base}{m:02d}:{s:02d}Z", "speed": {"inMetersPerSecond": 3.3}}
+              for m in range(6, 12) for s in range(0, 60, 5)]
+    route = [{"time": f"{base}{m:02d}:00Z", "lat": 52.0 + i * 0.0001, "lon": 5.0, "alt": 10 + (i % 2) * 5}
+             for i, m in enumerate(range(0, 12)) for _ in range(1)]
+    client.post("/api/v2/sync/exerciseSession", headers=auth(t), json={"data": [
+        {"metadata": {"id": "r1", "dataOrigin": "watch"}, "startTime": f"{base}00:00Z", "endTime": f"{base}12:00Z",
+         "exerciseType": 56, "route": route,
+         "laps": [{"startTime": f"{base}00:00Z", "endTime": f"{base}05:00Z"}],
+         "segments": [{"startTime": f"{base}00:00Z", "endTime": f"{base}12:00Z", "segmentType": 46}]}]})
+    client.post("/api/v2/sync/speed", headers=auth(t), json={"data": [
+        {"metadata": {"id": "s1", "dataOrigin": "watch"}, "startTime": f"{base}00:00Z", "endTime": f"{base}12:00Z",
+         "samples": speed}]})
+    key = client.post("/api/v2/apikeys", json={"name": "k"}, headers=auth(t)).get_json()["key"]
+    [w] = client.get("/api/v2/workouts", headers=auth(key)).get_json()
+    assert w["paused_s"] and 55 <= w["paused_s"] <= 70
+    assert w["moving_s"] < 12 * 60 - 50
+    assert w["has_route"] and w["elevation"]["gain_m"] >= 0
+    assert w["best_efforts"] and w["best_efforts"][0]["distance_m"] == 1000
+    assert abs(w["best_efforts"][0]["seconds"] - 1000 / 3.3) < 3
+    assert w["laps"][0]["seconds"] == 300 and w["laps"][0]["distance_m"] > 900
+    assert w["segments"][0]["type"] == "running"
+    detail = client.get("/api/v2/workouts/r1", headers=auth(key)).get_json()
+    assert len(detail["route"]) == 12 and len(detail["pauses"]) == 1

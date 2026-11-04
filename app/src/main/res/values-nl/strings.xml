@@ -137,4 +137,18 @@
     <string name="vo2_vs_earlier">tov eerdere runs</string>
     <string name="vo2_note">Schattingen zijn grof; ze worden beter met meer hardloopsessies met hartslag</string>
     <string name="vo2_unit">ml/kg/min</string>
+    <string name="best_efforts">Beste prestaties</string>
+    <string name="laps">Rondes</string>
+    <string name="segments">Segmenten</string>
+    <string name="marathon">Marathon</string>
+    <string name="half_marathon">Halve marathon</string>
+    <string name="one_mile">1 mijl</string>
+    <string name="moving_time">Bewegingstijd</string>
+    <string name="paused_time">Pauzes</string>
+    <string name="cadence">Cadans</string>
+    <string name="ascent">Stijging</string>
+    <string name="descent">Daling</string>
+    <string name="route">Route</string>
+    <string name="altitude">Hoogte</string>
+    <string name="unit_spm">spm</string>
 </resources>

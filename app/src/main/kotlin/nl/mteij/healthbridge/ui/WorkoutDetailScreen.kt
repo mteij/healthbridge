@@ -96,7 +96,11 @@ fun WorkoutDetailScreen(vm: AppViewModel, id: String, onBack: () -> Unit, onProf
                 else w.avgSpeedMps?.let { add(Triple(stringResource(R.string.avg_speed), String.format(Locale.getDefault(), "%.1f km/h", speedKmh(it)), null)) }
                 (w.activeKcal ?: w.totalKcal)?.let { add(Triple(stringResource(R.string.calories), "${it.toInt()} kcal", MetricColor.calories)) }
                 w.steps?.takeIf { it > 0 }?.let { add(Triple(stringResource(R.string.steps), number(it.toDouble()), MetricColor.steps)) }
-                w.elevationGainM?.takeIf { it > 0 }?.let { add(Triple(stringResource(R.string.elevation), "${it.toInt()} m", null)) }
+                w.movingS?.let { add(Triple(stringResource(R.string.moving_time), duration(it), null)) }
+                w.pausedS?.takeIf { it >= 10 }?.let { add(Triple(stringResource(R.string.paused_time), duration(it), null)) }
+                w.cadence?.let { add(Triple(stringResource(R.string.cadence), "${it.avg} ${stringResource(R.string.unit_spm)}", null)) }
+                (w.elevation?.gainM?.toDouble() ?: w.elevationGainM)?.takeIf { it > 0 }?.let { add(Triple(stringResource(R.string.ascent), "${it.toInt()} m", null)) }
+                w.elevation?.lossM?.takeIf { it > 0 }?.let { add(Triple(stringResource(R.string.descent), "$it m", null)) }
             }
             ElevatedSection(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -108,6 +112,30 @@ fun WorkoutDetailScreen(vm: AppViewModel, id: String, onBack: () -> Unit, onProf
                     }
                 }
             }
+        }
+
+        if (w.route.size >= 2) {
+            item {
+                ElevatedSection(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(stringResource(R.string.route), Modifier.padding(start = 8.dp, top = 8.dp), style = MaterialTheme.typography.titleMedium)
+                        RouteMap(w.route)
+                    }
+                }
+            }
+            val altitude = w.route.mapIndexedNotNull { i, p -> p.alt?.let { i.toDouble() to it } }
+            if (altitude.size >= 10) {
+                item {
+                    ElevatedSection(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            Text(stringResource(R.string.altitude), style = MaterialTheme.typography.titleMedium)
+                            LineChart(altitude, MetricColor.distance, format = { "${it.toInt()} m" })
+                        }
+                    }
+                }
+            }
+        } else if (w.hasRoute) {
+            item { Text(stringResource(R.string.loading), Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
 
         val hr = w.samples?.heartRate.orEmpty()
@@ -176,6 +204,10 @@ fun WorkoutDetailScreen(vm: AppViewModel, id: String, onBack: () -> Unit, onProf
                 }
             }
         }
+
+        if (w.bestEfforts.isNotEmpty()) item { BestEffortsCard(w.bestEfforts, Modifier.padding(horizontal = 16.dp)) }
+        if (w.laps.size >= 2) item { LapsCard(w.laps, Modifier.padding(horizontal = 16.dp)) }
+        if (w.segments.isNotEmpty()) item { SegmentsCard(w.segments, Modifier.padding(horizontal = 16.dp)) }
 
         val speed = w.samples?.speed.orEmpty()
         if (speed.size >= 2) {

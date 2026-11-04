@@ -181,6 +181,183 @@ def compute_splits(speed_points, hr_points, distance_m=None):
     return splits
 
 
+STOP_SPEED_MPS = 0.5
+MAX_SPEED_GAP_S = 30
+MIN_PAUSE_S = 10
+BEST_EFFORT_DISTANCES = (1000, 1609.344, 3000, 5000, 10000, 21097.5, 42195)
+SEGMENT_TYPES = {
+    1: "arm_curl", 2: "back_extension", 3: "ball_slam", 4: "barbell_shoulder_press", 5: "bench_press",
+    6: "bench_sit_up", 7: "biking", 8: "biking_stationary", 9: "burpee", 10: "crunch", 11: "deadlift",
+    12: "double_arm_triceps_extension", 13: "dumbbell_curl_left_arm", 14: "dumbbell_curl_right_arm",
+    15: "dumbbell_front_raise", 16: "dumbbell_lateral_raise", 17: "dumbbell_row",
+    18: "dumbbell_triceps_extension_left_arm", 19: "dumbbell_triceps_extension_right_arm",
+    20: "dumbbell_triceps_extension_two_arm", 21: "elliptical", 22: "forward_twist", 23: "front_raise",
+    24: "high_intensity_interval_training", 25: "hip_thrust", 26: "hula_hoop", 27: "jumping_jack",
+    28: "jump_rope", 29: "kettlebell_swing", 30: "lateral_raise", 31: "lat_pull_down", 32: "leg_curl",
+    33: "leg_extension", 34: "leg_press", 35: "leg_raise", 36: "lunge", 37: "mountain_climber",
+    38: "other_workout", 39: "pause", 40: "pilates", 41: "plank", 42: "pull_up", 43: "punch",
+    44: "rest", 45: "rowing_machine", 46: "running", 47: "running_treadmill", 48: "shoulder_press",
+    49: "single_arm_triceps_extension", 50: "sit_up", 51: "squat", 52: "stair_climbing",
+    53: "stair_climbing_machine", 54: "stretching", 55: "swimming_backstroke", 56: "swimming_breaststroke",
+    57: "swimming_butterfly", 58: "swimming_freestyle", 59: "swimming_mixed", 60: "swimming_open_water",
+    61: "swimming_other", 62: "swimming_pool", 63: "upper_twist", 64: "walking", 65: "weightlifting",
+    66: "wheelchair", 67: "yoga",
+}
+
+
+def movement(speed):
+    """Moving time and pauses from speed samples.
+
+    A stretch counts as a pause when the speed stays under 0.5 m/s, or when the watch recorded
+    nothing for more than 30 s (auto-pause stops the samples). Returns None without enough samples.
+    """
+    if len(speed) < 10:
+        return None
+    moving, pauses = 0.0, []
+    for (t0, v0), (t1, _) in zip(speed, speed[1:]):
+        gap = (t1 - t0).total_seconds()
+        stopped = gap > MAX_SPEED_GAP_S or v0 < STOP_SPEED_MPS
+        if not stopped:
+            moving += gap
+        elif pauses and (t0 - pauses[-1][1]).total_seconds() <= 1:
+            pauses[-1][1] = t1
+        else:
+            pauses.append([t0, t1])
+    pauses = [(a, b) for a, b in pauses if (b - a).total_seconds() >= MIN_PAUSE_S]
+    return {"moving_s": round(moving), "paused_s": round(sum((b - a).total_seconds() for a, b in pauses)),
+            "pauses": [{"start": to_iso(a), "end": to_iso(b)} for a, b in pauses]}
+
+
+def cumulative_distance(speed):
+    """[(time, metres so far)] by integrating speed; gaps longer than 30 s add no distance."""
+    out, total = [(speed[0][0], 0.0)], 0.0
+    for (t0, v0), (t1, _) in zip(speed, speed[1:]):
+        gap = (t1 - t0).total_seconds()
+        if gap <= MAX_SPEED_GAP_S:
+            total += v0 * gap
+        out.append((t1, total))
+    return out
+
+
+def best_efforts(speed, distance_m=None):
+    """Fastest stretch of each standard distance inside one workout (sliding window over distance)."""
+    if len(speed) < 10:
+        return []
+    track = cumulative_distance(speed)
+    total = track[-1][1]
+    if distance_m and abs(total - distance_m) / distance_m > 0.2:
+        return []
+    efforts = []
+    for target in BEST_EFFORT_DISTANCES:
+        if total < target:
+            break
+        best, j = None, 0
+        for i in range(len(track)):
+            while j < len(track) and track[j][1] - track[i][1] < target:
+                j += 1
+            if j >= len(track):
+                break
+            (tp, dp), (tj, dj) = track[j - 1], track[j]
+            frac = (track[i][1] + target - dp) / (dj - dp) if dj > dp else 1.0
+            seconds = (tp + (tj - tp) * frac - track[i][0]).total_seconds()
+            if seconds > 0 and (best is None or seconds < best):
+                best = seconds
+        if best is not None:
+            efforts.append({"distance_m": target, "seconds": round(best, 1)})
+    return efforts
+
+
+def cadence_stats(cadence_points, steps, moving_s, duration):
+    """Average and maximum steps per minute; from cadence samples if the watch wrote them,
+    otherwise from the step count over the moving time."""
+    if cadence_points:
+        values = [v for _, v in cadence_points]
+        return {"avg": round(sum(values) / len(values)), "max": round(max(values))}
+    seconds = moving_s or duration
+    if steps and seconds and seconds > 60:
+        return {"avg": round(steps / (seconds / 60)), "max": None}
+    return None
+
+
+def route_points(data):
+    """Decoded GPS route: [(time, lat, lon, alt)] with bad fixes dropped."""
+    out = []
+    for p in data.get("route") or []:
+        try:
+            lat, lon = float(p["lat"]), float(p["lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            continue
+        alt = p.get("alt")
+        out.append((p.get("time"), lat, lon, float(alt) if isinstance(alt, (int, float)) else None))
+    return out
+
+
+def elevation_profile(points, window=5):
+    """Gain, loss, minimum and maximum altitude. GPS altitude is noisy, so it is smoothed first
+    and only changes above 1 m between smoothed neighbours count."""
+    alts = [p[3] for p in points if p[3] is not None]
+    if len(alts) < 10:
+        return None
+    smooth = [sum(alts[max(0, i - window):i + window + 1]) / len(alts[max(0, i - window):i + window + 1]) for i in range(len(alts))]
+    gain = loss = 0.0
+    ref = smooth[0]
+    for a in smooth[1:]:
+        if abs(a - ref) >= 1.0:
+            if a > ref:
+                gain += a - ref
+            else:
+                loss += ref - a
+            ref = a
+    return {"gain_m": round(gain), "loss_m": round(loss), "min_m": round(min(smooth)), "max_m": round(max(smooth))}
+
+
+def downsample_route(points, limit=500):
+    if len(points) <= limit:
+        return points
+    step = (len(points) - 1) / (limit - 1)
+    return [points[round(i * step)] for i in range(limit)]
+
+
+def build_laps(data, speed, hr):
+    laps = []
+    for i, lap in enumerate(data.get("laps") or [], 1):
+        try:
+            start, end = parse_iso(lap["startTime"]), parse_iso(lap["endTime"])
+        except (KeyError, ValueError, TypeError):
+            continue
+        seconds = (end - start).total_seconds()
+        if seconds <= 0:
+            continue
+        distance = _measure(lap.get("length"), LENGTH_M, "inMeters")
+        if distance is None:
+            window = [(t, v) for t, v in speed if start <= t <= end]
+            if len(window) >= 3:
+                distance = sum(v0 * (t1 - t0).total_seconds() for (t0, v0), (t1, _) in zip(window, window[1:])
+                               if (t1 - t0).total_seconds() <= MAX_SPEED_GAP_S) or None
+        hrs = [b for t, b in hr if start <= t <= end]
+        laps.append({"lap": i, "start": to_iso(start), "seconds": round(seconds),
+                     "distance_m": round(distance) if distance else None,
+                     "pace_s_per_km": round(seconds / (distance / 1000)) if distance and distance > 50 else None,
+                     "avg_hr": round(sum(hrs) / len(hrs)) if hrs else None})
+    return laps
+
+
+def build_segments(data):
+    out = []
+    for seg in data.get("segments") or []:
+        try:
+            start, end = parse_iso(seg["startTime"]), parse_iso(seg["endTime"])
+        except (KeyError, ValueError, TypeError):
+            continue
+        out.append({"type": SEGMENT_TYPES.get(seg.get("segmentType"), f"segment_{seg.get('segmentType')}"),
+                    "start": to_iso(start), "seconds": round((end - start).total_seconds()),
+                    "repetitions": seg.get("repetitions") or None})
+    return out
+
+
+
 def build_workout(session, series, include_samples=False, max_hr=None):
     """`session` is a decoded exerciseSession doc; `series` maps record type -> decoded docs."""
     w_start, w_end = _span(session)
@@ -193,6 +370,9 @@ def build_workout(session, series, include_samples=False, max_hr=None):
                   lambda s: s.get("beatsPerMinute"))
     speed = _samples(series.get("speed", []), "samples", w_start, w_end, app,
                      lambda s: _measure(s.get("speed"), SPEED_MPS, "inMetersPerSecond"))
+
+    cadence = _samples(series.get("stepsCadence", []), "samples", w_start, w_end, app, lambda s: s.get("rate"))
+    route = route_points(data)
 
     distance = _sum(series.get("distance", []), "distance", LENGTH_M, "inMeters", w_start, w_end, app)
     avg_speed = sum(v for _, v in speed) / len(speed) if speed else None
@@ -217,7 +397,22 @@ def build_workout(session, series, include_samples=False, max_hr=None):
         "avg_speed_mps": _round(avg_speed, 3),
         "max_speed_mps": _round(max((v for _, v in speed), default=None), 3),
         "pace_s_per_km": None,
+        "moving_s": None,
+        "paused_s": None,
+        "cadence": None,
+        "has_route": bool(route),
+        "elevation": None,
+        "best_efforts": [],
+        "laps": build_laps(data, speed, hr),
+        "segments": build_segments(data),
     }
+    moved = movement(speed)
+    if moved:
+        workout["moving_s"], workout["paused_s"] = moved["moving_s"], moved["paused_s"]
+    workout["cadence"] = cadence_stats(cadence, workout["steps"], workout["moving_s"], duration)
+    workout["elevation"] = elevation_profile(route)
+    if kind in PACE_TYPES:
+        workout["best_efforts"] = best_efforts(speed, distance)
     if hr:
         values = [v for _, v in hr]
         workout["heart_rate"] = {"avg": round(sum(values) / len(values)), "min": min(values),
@@ -229,6 +424,11 @@ def build_workout(session, series, include_samples=False, max_hr=None):
         workout["zones_s"] = [round(z) for z in zones]
         workout["intensity_min"] = round(intensity_minutes(zones), 1)
     if include_samples:
+        workout["pauses"] = moved["pauses"] if moved else []
+        workout["route"] = [
+            {"t": t, "lat": round(lat, 6), "lon": round(lon, 6), "alt": round(alt, 1) if alt is not None else None}
+            for t, lat, lon, alt in downsample_route(route)
+        ]
         workout["splits"] = compute_splits(speed, hr, distance)
         workout["samples"] = {
             "heart_rate": [{"t": to_iso(t), "bpm": v} for t, v in hr],

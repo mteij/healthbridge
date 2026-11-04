@@ -12,7 +12,7 @@ from aggregate import build_workout, dedupe_workouts, type_name
 log = logging.getLogger("healthbridge.workouts")
 
 SERIES_TYPES = ["heartRate", "speed", "distance", "activeCaloriesBurned",
-                "totalCaloriesBurned", "steps", "elevationGained"]
+                "totalCaloriesBurned", "steps", "elevationGained", "stepsCadence"]
 DEFAULT_LIMIT, MAX_LIMIT = 20, 200
 # a record can begin well before the workout and still overlap it (an hour of steps, a long
 # heart-rate record); the range query below only uses this to bound the index scan

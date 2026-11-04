@@ -43,6 +43,32 @@ data class Samples(
 )
 
 @Serializable
+data class Cadence(val avg: Int, val max: Int? = null)
+
+@Serializable
+data class ElevationProfile(@SerialName("gain_m") val gainM: Int, @SerialName("loss_m") val lossM: Int, @SerialName("min_m") val minM: Int, @SerialName("max_m") val maxM: Int)
+
+@Serializable
+data class BestEffort(@SerialName("distance_m") val distanceM: Double, val seconds: Double)
+
+@Serializable
+data class Lap(
+    val lap: Int, val start: String, val seconds: Int,
+    @SerialName("distance_m") val distanceM: Int? = null,
+    @SerialName("pace_s_per_km") val paceSPerKm: Int? = null,
+    @SerialName("avg_hr") val avgHr: Int? = null,
+)
+
+@Serializable
+data class WorkoutSegment(val type: String, val start: String, val seconds: Int, val repetitions: Int? = null)
+
+@Serializable
+data class Pause(val start: String, val end: String)
+
+@Serializable
+data class RoutePoint(val t: String? = null, val lat: Double, val lon: Double, val alt: Double? = null)
+
+@Serializable
 data class Split(val km: Double, val seconds: Int, @SerialName("pace_s_per_km") val paceSPerKm: Int, @SerialName("avg_hr") val avgHr: Int? = null, val partial: Boolean = false)
 
 @Serializable
@@ -100,6 +126,16 @@ data class Workout(
     @SerialName("zones_s") val zonesS: List<Int>? = null,
     @SerialName("intensity_min") val intensityMin: Double? = null,
     val splits: List<Split> = emptyList(),
+    @SerialName("moving_s") val movingS: Long? = null,
+    @SerialName("paused_s") val pausedS: Long? = null,
+    val cadence: Cadence? = null,
+    @SerialName("has_route") val hasRoute: Boolean = false,
+    val elevation: ElevationProfile? = null,
+    @SerialName("best_efforts") val bestEfforts: List<BestEffort> = emptyList(),
+    val laps: List<Lap> = emptyList(),
+    val segments: List<WorkoutSegment> = emptyList(),
+    val pauses: List<Pause> = emptyList(),
+    val route: List<RoutePoint> = emptyList(),
 )
 
 /** Compresses larger request bodies; the server accepts `Content-Encoding: gzip`. */

@@ -137,4 +137,18 @@
     <string name="vo2_vs_earlier">per 5 runs</string>
     <string name="vo2_note">Estimates are rough; they get better the more runs with heart rate you record</string>
     <string name="vo2_unit">ml/kg/min</string>
+    <string name="best_efforts">Best efforts</string>
+    <string name="laps">Laps</string>
+    <string name="segments">Segments</string>
+    <string name="marathon">Marathon</string>
+    <string name="half_marathon">Half marathon</string>
+    <string name="one_mile">1 mile</string>
+    <string name="moving_time">Moving time</string>
+    <string name="paused_time">Paused</string>
+    <string name="cadence">Cadence</string>
+    <string name="ascent">Ascent</string>
+    <string name="descent">Descent</string>
+    <string name="route">Route</string>
+    <string name="altitude">Altitude</string>
+    <string name="unit_spm">spm</string>
 </resources>

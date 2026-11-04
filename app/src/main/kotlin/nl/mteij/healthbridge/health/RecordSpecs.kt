@@ -10,6 +10,7 @@ import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.BodyTemperatureRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ElevationGainedRecord
+import androidx.health.connect.client.records.ExerciseRouteResult
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
@@ -140,6 +141,9 @@ private fun JsonObjectBuilder.percentage(name: String, p: androidx.health.connec
 private fun JsonObjectBuilder.power(name: String, p: androidx.health.connect.client.units.Power) =
     put(name, buildJsonObject { put("inWatts", p.inWatts) })
 
+/** A long outing records a point per second; a few thousand are plenty to draw and measure the route. */
+private const val MAX_ROUTE_POINTS = 2000
+
 object RecordSpecs {
     val all: List<Spec<out Record>> = listOf(
         spec<ExerciseSessionRecord>("exerciseSession", "Workouts", "activity") { r ->
@@ -156,6 +160,20 @@ object RecordSpecs {
                     })
                 }
             })
+            // the GPS track is only included when the route permission is granted (otherwise the result is ConsentRequired)
+            (r.exerciseRouteResult as? ExerciseRouteResult.Data)?.exerciseRoute?.route?.let { points ->
+                val step = maxOf(1, points.size / MAX_ROUTE_POINTS)
+                put("route", buildJsonArray {
+                    points.filterIndexed { i, _ -> i % step == 0 }.forEach { p ->
+                        add(buildJsonObject {
+                            put("time", p.time.toString())
+                            put("lat", p.latitude)
+                            put("lon", p.longitude)
+                            p.altitude?.let { put("alt", it.inMeters) }
+                        })
+                    }
+                })
+            }
             put("laps", buildJsonArray {
                 r.laps.forEach { l ->
                     add(buildJsonObject {
@@ -265,5 +283,6 @@ object RecordSpecs {
     val permissions: Set<String> =
         all.map { it.readPermission }.toSet() +
             HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY +
-            HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
+            HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND +
+            HealthAccess.routePermission
 }
