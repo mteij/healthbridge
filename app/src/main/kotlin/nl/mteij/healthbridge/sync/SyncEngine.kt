@@ -94,6 +94,12 @@ class SyncEngine(
 
         // A full re-import is remembered per type, so a killed or retried run resumes where it stopped.
         if (full) prefs.pendingFull = specs.map { it.key }.toSet()
+        // workouts synced before routes were read have none yet: re-import them once the permission is there
+        val routeBackfill = HealthAccess.routePermission in granted && !prefs.routeBackfilled && specs.any { it.key == "exerciseSession" }
+        if (routeBackfill) {
+            prefs.pendingFull = prefs.pendingFull + "exerciseSession"
+            log.info("Re-importing workouts to add their GPS routes")
+        }
         recordsSent = 0
 
         var uploaded = 0
@@ -104,6 +110,7 @@ class SyncEngine(
             try {
                 val result = syncType(client, spec, spec.key in prefs.pendingFull)
                 prefs.pendingFull = prefs.pendingFull - spec.key
+                if (spec.key == "exerciseSession" && routeBackfill) prefs.routeBackfilled = true
                 uploaded += result.first
                 deleted += result.second
             } catch (e: IOException) {

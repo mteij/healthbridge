@@ -138,3 +138,17 @@ def test_manual_sleep_replaces_the_same_night_from_another_app(client, session):
     key = client.post("/api/v2/apikeys", json={"name": "k"}, headers=auth(t)).get_json()["key"]
     nights = client.get("/api/v2/sleep?from=2026-10-19&to=2026-10-22&tz=UTC", headers=auth(key)).get_json()
     assert [n["id"] for n in nights] == ["manual-2026-10-20", "other-night"]
+
+
+def test_routes_endpoint_lists_thinned_tracks(client, session):
+    t = session["token"]
+    track = [{"time": f"2026-10-20T10:{m:02d}:00Z", "lat": 52 + m * 0.001, "lon": 5.0} for m in range(30)]
+    client.post("/api/v2/sync/exerciseSession", headers=auth(t), json={"data": [
+        {"metadata": {"id": "g1", "dataOrigin": "watch"}, "startTime": "2026-10-20T10:00:00Z", "endTime": "2026-10-20T10:30:00Z",
+         "exerciseType": 56, "route": track},
+        {"metadata": {"id": "g2", "dataOrigin": "watch"}, "startTime": "2026-10-21T10:00:00Z", "endTime": "2026-10-21T10:30:00Z",
+         "exerciseType": 56}]})
+    key = client.post("/api/v2/apikeys", json={"name": "k"}, headers=auth(t)).get_json()["key"]
+    res = client.get("/api/v2/routes", headers=auth(key)).get_json()
+    assert [r["id"] for r in res] == ["g1"] and len(res[0]["points"]) == 30
+    assert client.get("/api/v2/routes?type=cycling", headers=auth(key)).get_json() == []

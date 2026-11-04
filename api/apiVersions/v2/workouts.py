@@ -7,7 +7,7 @@ from blueprint import v2
 from crypto import data_cipher
 from apiVersions.v2.records import decrypt_docs
 from timeutil import canonical, parse_iso, to_iso
-from aggregate import build_workout, dedupe_workouts, type_name
+from aggregate import build_workout, dedupe_workouts, downsample_route, route_points, type_name
 
 log = logging.getLogger("healthbridge.workouts")
 
@@ -73,6 +73,27 @@ def workouts():
     built = [build_workout(session, series_for(g.user, session, cipher), include_samples, max_hr) for session in sessions]
     out = [w for w in dedupe_workouts(built) if not wanted or w["type"] == wanted.lower()]
     return jsonify(out[:limit]), 200
+
+
+@v2.get("/routes")
+def routes():
+    """Every GPS track in the most recent sessions, thinned to ~150 points each, for the personal heatmap."""
+    try:
+        limit = max(1, min(int(request.args.get("limit", 300)), 1000))
+    except ValueError:
+        return jsonify({"error": "invalid limit"}), 400
+    user = db.users().find_one({"_id": g.user})
+    sessions = decrypt_docs(load_sessions(g.user, {}, limit), data_cipher(user))
+    wanted = request.args.get("type")
+    out = []
+    for session in sessions:
+        kind = type_name(session["data"].get("exerciseType"))
+        points = route_points(session["data"])
+        if len(points) < 2 or (wanted and kind != wanted.lower()):
+            continue
+        out.append({"id": session.get("id") or session["_id"], "type": kind, "start": session["start"],
+                    "points": [[round(lat, 5), round(lon, 5)] for _, lat, lon, _ in downsample_route(points, 150)]})
+    return jsonify(out), 200
 
 
 @v2.get("/workouts/<workout_id>")

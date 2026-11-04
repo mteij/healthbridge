@@ -163,4 +163,17 @@
     <string name="entered_by_hand">Handmatig ingevoerd</string>
     <string name="save_failed">Opslaan mislukt</string>
     <string name="setup_route_title">Sta het lezen van GPS-routes van workouts toe</string>
+    <string name="map_standard">Kaart</string>
+    <string name="map_terrain">Terrein</string>
+    <string name="map_satellite">Satelliet</string>
+    <string name="map_dark">Donker</string>
+    <string name="personal_records">Persoonlijke records</string>
+    <string name="running_records">Hardlopen</string>
+    <string name="records_hint">Snelste tijd per afstand, uit je workouts of handmatig ingevoerd. Tik op een rij om de workout te openen, op het potlood om een tijd in te voeren.</string>
+    <string name="other_records">Overige records</string>
+    <string name="record_ascent">Meeste stijging</string>
+    <string name="note">Notitie</string>
+    <string name="heatmap">Heatmap</string>
+    <string name="routes_count">%d routes</string>
+    <string name="no_routes">Nog geen GPS-routes. Ze verschijnen na de volgende sync met toegang tot routes.</string>
 </resources>

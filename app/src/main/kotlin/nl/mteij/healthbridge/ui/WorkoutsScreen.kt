@@ -52,7 +52,7 @@ private enum class Sort(val label: Int) { NEWEST(R.string.sort_newest), LONGEST(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun WorkoutsScreen(vm: AppViewModel, onWorkout: (String) -> Unit) {
+fun WorkoutsScreen(vm: AppViewModel, onWorkout: (String) -> Unit, onRecords: () -> Unit, onHeatmap: () -> Unit) {
     val state by vm.workouts.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
@@ -91,11 +91,17 @@ fun WorkoutsScreen(vm: AppViewModel, onWorkout: (String) -> Unit) {
                     }
                 }
             }
-            item { Records(all, Modifier.padding(horizontal = 16.dp)) }
+            item { Records(all, onRecords, Modifier.padding(horizontal = 16.dp)) }
+            item {
+                Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = false, onClick = onRecords, label = { Text(stringResource(R.string.personal_records)) })
+                    FilterChip(selected = false, onClick = onHeatmap, label = { Text(stringResource(R.string.heatmap)) })
+                }
+            }
         }
 
         stickyHeader {
-            StickyHeader(rememberStuck(listState, if (all.isNotEmpty()) 4 else 2)) {
+            StickyHeader(rememberStuck(listState, if (all.isNotEmpty()) 5 else 2)) {
                 SearchField(query, { query = it }, stringResource(R.string.search_workouts))
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box {
@@ -146,12 +152,12 @@ fun WorkoutsScreen(vm: AppViewModel, onWorkout: (String) -> Unit) {
 
 /** Longest and fastest efforts across the loaded workouts. */
 @Composable
-private fun Records(all: List<Workout>, modifier: Modifier) {
+private fun Records(all: List<Workout>, onClick: () -> Unit, modifier: Modifier) {
     val longest = all.maxByOrNull { it.distanceM ?: 0.0 }?.takeIf { (it.distanceM ?: 0.0) > 0 }
     val longestTime = all.maxByOrNull { it.durationS }
     val fastestRun = all.filter { it.type.startsWith("running") && (it.distanceM ?: 0.0) >= 3000 && it.paceSPerKm != null }.minByOrNull { it.paceSPerKm!! }
     if (longest == null && fastestRun == null) return
-    ElevatedSection(modifier.fillMaxWidth()) {
+    ElevatedSection(modifier.fillMaxWidth(), onClick = onClick) {
         Row(Modifier.padding(20.dp)) {
             longest?.let { StatTile(stringResource(R.string.record_distance), kilometers(it.distanceM!!), Modifier.weight(1f)) }
             longestTime?.let { StatTile(stringResource(R.string.record_duration), duration(it.durationS), Modifier.weight(1f)) }

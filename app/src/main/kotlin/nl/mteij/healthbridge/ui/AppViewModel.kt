@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.jsonPrimitive
 import nl.mteij.healthbridge.Graph
 import nl.mteij.healthbridge.data.DayTotal
 import nl.mteij.healthbridge.data.HealthMath
@@ -152,6 +153,66 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             state, force, if (to < LocalDate.now()) 30 * 60_000 else 60_000,
         )
         return key
+    }
+
+    private val _allWorkouts = MutableStateFlow(Loadable<List<Workout>>())
+    val allWorkouts: StateFlow<Loadable<List<Workout>>> = _allWorkouts
+
+    /** Up to 500 workouts for the records page; heavier than the 200 the list uses, so it is cached longer. */
+    fun loadAllWorkouts(force: Boolean = false) = load(
+        "workouts-all${maxHr()}", "workouts?limit=500${hrQuery()}", { json.decodeFromString(ListSerializer(Workout.serializer()), it) },
+        _allWorkouts, force, 10 * 60_000,
+    )
+
+    private val _routes = MutableStateFlow(Loadable<List<nl.mteij.healthbridge.data.RouteTrack>>())
+    val routes: StateFlow<Loadable<List<nl.mteij.healthbridge.data.RouteTrack>>> = _routes
+
+    fun loadRoutes(force: Boolean = false) = load(
+        "routes", "routes?limit=500", { json.decodeFromString(ListSerializer(nl.mteij.healthbridge.data.RouteTrack.serializer()), it) }, _routes, force, 10 * 60_000,
+    )
+
+    private val _manualRecords = MutableStateFlow<Map<Int, nl.mteij.healthbridge.data.ManualRecord>>(emptyMap())
+    /** Hand entered records by distance in metres, stored on the server as `personalRecord` records. */
+    val manualRecords: StateFlow<Map<Int, nl.mteij.healthbridge.data.ManualRecord>> = _manualRecords
+
+    fun loadManualRecords() {
+        if (!Graph.prefs.isLoggedIn) return
+        viewModelScope.launch {
+            runCatching {
+                val text = Graph.api.fetchRecords("personalRecord")
+                val rows = json.parseToJsonElement(text) as kotlinx.serialization.json.JsonArray
+                rows.mapNotNull { row ->
+                    val data = (row as kotlinx.serialization.json.JsonObject)["data"] as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
+                    val distance = data["distanceM"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: return@mapNotNull null
+                    val seconds = data["seconds"]?.jsonPrimitive?.content?.toIntOrNull() ?: return@mapNotNull null
+                    val date = data["date"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                    distance.toInt() to nl.mteij.healthbridge.data.ManualRecord(distance, seconds, date, data["note"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() })
+                }.toMap()
+            }.getOrNull()?.let { _manualRecords.value = it }
+        }
+    }
+
+    fun saveManualRecord(record: nl.mteij.healthbridge.data.ManualRecord) {
+        val id = "pr-${record.distanceM.toInt()}"
+        val json = kotlinx.serialization.json.buildJsonObject {
+            put("metadata", kotlinx.serialization.json.buildJsonObject {
+                put("id", kotlinx.serialization.json.JsonPrimitive(id))
+                put("dataOrigin", kotlinx.serialization.json.JsonPrimitive(MANUAL_SLEEP_SOURCE))
+            })
+            put("startTime", kotlinx.serialization.json.JsonPrimitive("${record.date}T12:00:00Z"))
+            put("endTime", kotlinx.serialization.json.JsonPrimitive("${record.date}T12:00:00Z"))
+            put("distanceM", kotlinx.serialization.json.JsonPrimitive(record.distanceM))
+            put("seconds", kotlinx.serialization.json.JsonPrimitive(record.seconds))
+            put("date", kotlinx.serialization.json.JsonPrimitive(record.date))
+            record.note?.let { put("note", kotlinx.serialization.json.JsonPrimitive(it)) }
+        }
+        _manualRecords.value = _manualRecords.value + (record.distanceM.toInt() to record)
+        viewModelScope.launch { runCatching { Graph.api.upload("personalRecord", listOf(json)) }.onFailure { loadManualRecords() } }
+    }
+
+    fun deleteManualRecord(distanceM: Int) {
+        _manualRecords.value = _manualRecords.value - distanceM
+        viewModelScope.launch { runCatching { Graph.api.delete("personalRecord", listOf("pr-$distanceM")) }.onFailure { loadManualRecords() } }
     }
 
     /** A night entered by hand is stored as a sleep session from the "healthbridge.manual" source, one per wake-up day. */

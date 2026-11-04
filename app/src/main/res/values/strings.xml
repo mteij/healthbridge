@@ -163,4 +163,17 @@
     <string name="entered_by_hand">Entered by hand</string>
     <string name="save_failed">Could not save the night</string>
     <string name="setup_route_title">Allow reading GPS routes of workouts</string>
+    <string name="map_standard">Map</string>
+    <string name="map_terrain">Terrain</string>
+    <string name="map_satellite">Satellite</string>
+    <string name="map_dark">Dark</string>
+    <string name="personal_records">Personal records</string>
+    <string name="running_records">Running</string>
+    <string name="records_hint">Fastest time per distance, from your workouts or typed in by hand. Tap a row to open the workout, the pencil to enter a time.</string>
+    <string name="other_records">Other records</string>
+    <string name="record_ascent">Most ascent</string>
+    <string name="note">Note</string>
+    <string name="heatmap">Heatmap</string>
+    <string name="routes_count">%d routes</string>
+    <string name="no_routes">No GPS routes yet. They appear after the next sync with route access.</string>
 </resources>

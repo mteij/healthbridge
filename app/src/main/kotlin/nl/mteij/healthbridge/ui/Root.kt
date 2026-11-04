@@ -81,7 +81,13 @@ fun Root(vm: AppViewModel = viewModel()) {
                     )
                 }
             }
-            composable("workouts") { PullToRefresh(vm) { WorkoutsScreen(vm, onWorkout = { nav.navigate("workout/$it") }) } }
+            composable("workouts") {
+                PullToRefresh(vm) {
+                    WorkoutsScreen(vm, onWorkout = { nav.navigate("workout/$it") }, onRecords = { nav.navigate("records") }, onHeatmap = { nav.navigate("heatmap") })
+                }
+            }
+            composable("records") { RecordsScreen(vm, onBack = { nav.popBackStack() }, onWorkout = { nav.navigate("workout/$it") }) }
+            composable("heatmap") { HeatmapScreen(vm, onBack = { nav.popBackStack() }) }
             composable("trends") { PullToRefresh(vm) { TrendsScreen(vm) } }
             composable("settings") {
                 SettingsScreen(vm, onLog = { nav.navigate("log") }, onProfile = { nav.navigate("profile") }, onDataTypes = { nav.navigate("datatypes") })

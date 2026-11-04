@@ -246,6 +246,11 @@ class Api(private val prefs: Prefs) {
         authed { it.url(url("sync/$type")).delete(body) }
     }
 
+    /** All records of one type (used for the personal records the user entered by hand). */
+    suspend fun fetchRecords(type: String): String = withContext(Dispatchers.IO) {
+        authed { it.url(url("fetch/$type")).post("{}".toRequestBody(jsonType)) }
+    }
+
     /** Raw JSON of a GET endpoint, so callers can cache the text and decode it themselves. */
     suspend fun getText(path: String): String = withContext(Dispatchers.IO) {
         authed { it.url(url(path)).get() }
@@ -254,3 +259,9 @@ class Api(private val prefs: Prefs) {
     val format: Json get() = json
 
 }
+
+/** A personal record typed in by hand, for an effort that was not recorded by a watch. */
+data class ManualRecord(val distanceM: Double, val seconds: Int, val date: String, val note: String?)
+
+@Serializable
+data class RouteTrack(val id: String, val type: String, val start: String, val points: List<List<Double>>)
