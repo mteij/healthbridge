@@ -38,7 +38,31 @@ object HealthAccess {
     }
 
     val backgroundPermission = HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
-    /** Needed to read the GPS track of a workout; without it Health Connect only reports that consent is required. */
-    const val routePermission = "android.permission.health.READ_EXERCISE_ROUTES"
     val historyPermission = HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY
+
+    /**
+     * Health Connect has no "read all routes" permission: the user allows each workout's route in its own
+     * consent screen (ExerciseRouteRequestContract). This lists the workouts whose route is there but not yet shared.
+     */
+    suspend fun sessionsNeedingRouteConsent(context: Context, since: java.time.Instant): List<String> {
+        val client = client(context)
+        val out = mutableListOf<String>()
+        var token: String? = null
+        do {
+            val page = client.readRecords(
+                androidx.health.connect.client.request.ReadRecordsRequest(
+                    androidx.health.connect.client.records.ExerciseSessionRecord::class,
+                    androidx.health.connect.client.time.TimeRangeFilter.between(since, java.time.Instant.now()),
+                    pageSize = 1000, pageToken = token,
+                ),
+            )
+            page.records.filter { it.exerciseRouteResult is androidx.health.connect.client.records.ExerciseRouteResult.ConsentRequired }
+                .mapTo(out) { it.metadata.id }
+            token = page.pageToken?.takeIf { it.isNotEmpty() }
+        } while (token != null)
+        return out
+    }
+
+    suspend fun session(context: Context, id: String): androidx.health.connect.client.records.ExerciseSessionRecord? =
+        runCatching { client(context).readRecord(androidx.health.connect.client.records.ExerciseSessionRecord::class, id).record }.getOrNull()
 }

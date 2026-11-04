@@ -39,7 +39,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import nl.mteij.healthbridge.Graph
 import nl.mteij.healthbridge.R
+import nl.mteij.healthbridge.health.HealthAccess
 import nl.mteij.healthbridge.data.Workout
 import java.util.Locale
 
@@ -53,6 +55,14 @@ fun WorkoutDetailScreen(vm: AppViewModel, id: String, onBack: () -> Unit, onProf
     val workouts by vm.workouts.collectAsState()
     val overview by vm.overview.collectAsState()
     LaunchedEffect(id) { vm.loadWorkout(id) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var canShareRoute by androidx.compose.runtime.remember(id) { androidx.compose.runtime.mutableStateOf(false) }
+    val routeConsent = rememberRouteConsent { vm.loadWorkout(id, force = true); canShareRoute = false }
+    LaunchedEffect(id) {
+        canShareRoute = runCatching {
+            id in HealthAccess.sessionsNeedingRouteConsent(context, java.time.Instant.now().minus(java.time.Duration.ofDays(Graph.prefs.backfillDays.toLong())))
+        }.getOrDefault(false)
+    }
     val listState = rememberLazyListState()
 
     val detail = details[id]
@@ -114,6 +124,19 @@ fun WorkoutDetailScreen(vm: AppViewModel, id: String, onBack: () -> Unit, onProf
             }
         }
 
+        if (w.route.isEmpty() && canShareRoute) {
+            item {
+                ElevatedSection(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), onClick = { routeConsent.start(listOf(id)) }) {
+                    Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.route), style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.route_share_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.Rounded.ChevronRight, null)
+                    }
+                }
+            }
+        }
         if (w.route.size >= 2) {
             item {
                 ElevatedSection(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {

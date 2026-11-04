@@ -102,11 +102,6 @@ class Prefs(context: Context) {
         get() = string("mapStyle", "standard")!!
         set(v) = put { putString("mapStyle", v) }
 
-    /** Set once the GPS routes of already synced workouts have been re-imported. */
-    var routeBackfilled: Boolean
-        get() = sp.getBoolean("routeBackfilled", false)
-        set(v) = put { putBoolean("routeBackfilled", v) }
-
     var lastRunMs: Long
         get() = sp.getLong("lastRunMs", 0)
         set(v) = put { putLong("lastRunMs", v) }

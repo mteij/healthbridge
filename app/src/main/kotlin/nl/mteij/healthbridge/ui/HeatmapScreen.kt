@@ -29,7 +29,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import nl.mteij.healthbridge.Graph
 import nl.mteij.healthbridge.R
+import nl.mteij.healthbridge.health.HealthAccess
 
 /** Every GPS track of the user drawn on one map, so the roads used most glow. Strava's global heatmap is their data and not available here. */
 @Composable
@@ -42,6 +44,14 @@ fun HeatmapScreen(vm: AppViewModel, onBack: () -> Unit) {
     val types = tracks.groupingBy { it.type }.eachCount().entries.sortedByDescending { it.value }
     val shown = tracks.filter { filter == null || it.type == filter }
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var missing by remember { mutableStateOf(emptyList<String>()) }
+    LaunchedEffect(state.value) {
+        missing = runCatching {
+            HealthAccess.sessionsNeedingRouteConsent(context, java.time.Instant.now().minus(java.time.Duration.ofDays(Graph.prefs.backfillDays.toLong())))
+        }.getOrDefault(emptyList())
+    }
+    val routeConsent = rememberRouteConsent { vm.loadRoutes(force = true) }
 
     Column(Modifier.statusBarsPadding().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -54,6 +64,11 @@ fun HeatmapScreen(vm: AppViewModel, onBack: () -> Unit) {
             FilterChip(selected = filter == null, onClick = { filter = null }, label = { Text(stringResource(R.string.all)) })
             types.forEach { (type, count) ->
                 FilterChip(selected = filter == type, onClick = { filter = if (filter == type) null else type }, label = { Text("${workoutLabel(type)} · $count") })
+            }
+        }
+        if (missing.isNotEmpty()) {
+            androidx.compose.material3.OutlinedButton(onClick = { routeConsent.start(missing) }, Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.routes_share_all, missing.size))
             }
         }
         MapStylePicker(style, { style = it })

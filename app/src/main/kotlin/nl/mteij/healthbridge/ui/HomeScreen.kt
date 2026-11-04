@@ -104,8 +104,7 @@ fun HomeScreen(vm: AppViewModel, onWorkout: (String) -> Unit, onWorkouts: () -> 
     val batteryOk = power.isIgnoringBatteryOptimizations(context.packageName)
     val dataGranted = RecordSpecs.all.any { it.readPermission in health.granted }
     val backgroundGranted = HealthAccess.backgroundPermission in health.granted && health.backgroundSupported
-    val routeGranted = HealthAccess.routePermission in health.granted
-    val setupDone = health.status == HealthStatus.AVAILABLE && dataGranted && backgroundGranted && batteryOk && routeGranted
+    val setupDone = health.status == HealthStatus.AVAILABLE && dataGranted && backgroundGranted && batteryOk
 
     val data = overview.value
     val steps = data?.daily?.get("steps").orEmpty()
@@ -174,9 +173,6 @@ fun HomeScreen(vm: AppViewModel, onWorkout: (String) -> Unit, onWorkouts: () -> 
                             stringResource(R.string.setup_bg_action),
                             health.status == HealthStatus.AVAILABLE && health.backgroundSupported,
                         ) { permissionLauncher.launch(setOf(HealthAccess.backgroundPermission, HealthAccess.historyPermission)) }
-                        SetupRow(routeGranted, stringResource(R.string.setup_route_title), stringResource(R.string.setup_perm_action), health.status == HealthStatus.AVAILABLE) {
-                            permissionLauncher.launch(setOf(HealthAccess.routePermission))
-                        }
                         SetupRow(batteryOk, stringResource(R.string.setup_battery_title), stringResource(R.string.setup_battery_action)) {
                             val request = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
                             runCatching { context.startActivity(request) }.onFailure {

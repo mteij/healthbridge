@@ -162,7 +162,6 @@
     <string name="delete">Delete</string>
     <string name="entered_by_hand">Entered by hand</string>
     <string name="save_failed">Could not save the night</string>
-    <string name="setup_route_title">Allow reading GPS routes of workouts</string>
     <string name="map_standard">Map</string>
     <string name="map_terrain">Terrain</string>
     <string name="map_satellite">Satellite</string>
@@ -175,5 +174,7 @@
     <string name="note">Note</string>
     <string name="heatmap">Heatmap</string>
     <string name="routes_count">%d routes</string>
-    <string name="no_routes">No GPS routes yet. They appear after the next sync with route access.</string>
+    <string name="route_share_hint">Allow Health Connect to share this workout's GPS route with Healthbridge</string>
+    <string name="routes_share_all">Allow routes of %d workouts (one screen each)</string>
+    <string name="no_routes">No GPS routes yet. Allow them per workout below, or open a workout.</string>
 </resources>

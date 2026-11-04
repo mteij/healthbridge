@@ -10,6 +10,7 @@ import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.BodyTemperatureRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ElevationGainedRecord
+import androidx.health.connect.client.records.ExerciseRoute
 import androidx.health.connect.client.records.ExerciseRouteResult
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
@@ -160,20 +161,8 @@ object RecordSpecs {
                     })
                 }
             })
-            // the GPS track is only included when the route permission is granted (otherwise the result is ConsentRequired)
-            (r.exerciseRouteResult as? ExerciseRouteResult.Data)?.exerciseRoute?.route?.let { points ->
-                val step = maxOf(1, points.size / MAX_ROUTE_POINTS)
-                put("route", buildJsonArray {
-                    points.filterIndexed { i, _ -> i % step == 0 }.forEach { p ->
-                        add(buildJsonObject {
-                            put("time", p.time.toString())
-                            put("lat", p.latitude)
-                            put("lon", p.longitude)
-                            p.altitude?.let { put("alt", it.inMeters) }
-                        })
-                    }
-                })
-            }
+            // present once the user has allowed this workout's route in Health Connect
+            (r.exerciseRouteResult as? ExerciseRouteResult.Data)?.exerciseRoute?.route?.let { put("route", routeJson(it)) }
             put("laps", buildJsonArray {
                 r.laps.forEach { l ->
                     add(buildJsonObject {
@@ -283,6 +272,21 @@ object RecordSpecs {
     val permissions: Set<String> =
         all.map { it.readPermission }.toSet() +
             HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY +
-            HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND +
-            HealthAccess.routePermission
+            HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
+
+    /** A session record with the route the user just allowed (Health Connect only returns it per workout after consent). */
+    fun encodeSessionWithRoute(record: ExerciseSessionRecord, route: ExerciseRoute): JsonObject =
+        JsonObject(byKey.getValue("exerciseSession").encode(record) + ("route" to routeJson(route.route)))
+}
+
+private fun routeJson(points: List<ExerciseRoute.Location>) = buildJsonArray {
+    val step = maxOf(1, points.size / MAX_ROUTE_POINTS)
+    points.filterIndexed { i, _ -> i % step == 0 }.forEach { p ->
+        add(buildJsonObject {
+            put("time", p.time.toString())
+            put("lat", p.latitude)
+            put("lon", p.longitude)
+            p.altitude?.let { put("alt", it.inMeters) }
+        })
+    }
 }
