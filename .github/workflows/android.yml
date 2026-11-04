@@ -2,7 +2,7 @@ name: Android
 
 on:
   push:
-    branches: [main, app-rewrite, expressive, crashfix]
+    branches: [main, app-rewrite, expressive, crashfix, stats]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
